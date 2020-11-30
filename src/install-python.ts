@@ -9,7 +9,7 @@ const TOKEN = core.getInput('token');
 const AUTH = !TOKEN || isGhes() ? undefined : `token ${TOKEN}`;
 const MANIFEST_REPO_OWNER = 'actions';
 const MANIFEST_REPO_NAME = 'python-versions';
-const MANIFEST_REPO_BRANCH = 'main';
+const MANIFEST_REPO_BRANCH = 'update-versions-manifest-file';
 export const MANIFEST_URL = `https://raw.githubusercontent.com/${MANIFEST_REPO_OWNER}/${MANIFEST_REPO_NAME}/${MANIFEST_REPO_BRANCH}/versions-manifest.json`;
 
 const IS_WINDOWS = process.platform === 'win32';
