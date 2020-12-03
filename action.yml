@@ -6,6 +6,9 @@ inputs:
   python-version:
     description: "Version range or exact version of a Python version to use, using SemVer's version range syntax."
     default: '3.x'
+  pypy-version:
+    description: "Version range or exact version of a PyPy version to use, using SemVer's version range syntax."
+    default: '3.6'
   architecture:
     description: 'The target architecture (x86, x64) of the Python interpreter.'
   token:
