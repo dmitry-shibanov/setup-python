@@ -49,6 +49,7 @@ export async function installPyPy(
   core.info(`Download from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
+  core.info(`Download python ${python_version} and PyPy ${pypy_version}`);
 
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
@@ -96,7 +97,7 @@ function findRelease(
 
       return {
         release,
-        python_version: item.pypy_version,
+        python_version: item.python_version,
         pypy_version: item.pypy_version
       };
     }

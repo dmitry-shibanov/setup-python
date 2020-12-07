@@ -59,7 +59,7 @@ export async function findPyPyVersion(
       architecture
     ));
 
-    await createSymlinks(installDir, pypyVersionSpec.pythonVersion);
+    await createSymlinks(installDir, python_version);
   }
 
   python_version = versionFromPath(installDir);
@@ -103,7 +103,7 @@ async function getCurrentPyPyVersion(
 }
 
 function validatePyPyVersions(currentPyPyVersion: string, pypyVersion: string) {
-  return semver.satisfies(currentPyPyVersion, pypyVersion);
+  return !semver.satisfies(currentPyPyVersion, pypyVersion);
 }
 
 async function prepareEnvironment(
@@ -127,7 +127,7 @@ async function prepareEnvironment(
 
 async function createSymlinks(installDir: string, pythonVersion: string) {
   const pythonLocation = getPyPyBinary(installDir);
-  const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
+  const major = semver.major(pythonVersion) === 2 ? '' : '3';
 
   if (IS_WINDOWS) {
     await exec.exec(

@@ -1122,7 +1122,7 @@ function findPyPyVersion(versionSpec, architecture) {
         }
         if (!installDir) {
             ({ installDir, python_version, pypy_version } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture));
-            yield createSymlinks(installDir, pypyVersionSpec.pythonVersion);
+            yield createSymlinks(installDir, python_version);
         }
         python_version = versionFromPath(installDir);
         return yield prepareEnvironment(installDir, pypy_version, python_version);
@@ -1158,7 +1158,7 @@ function getCurrentPyPyVersion(installDir, pythonVersion) {
     });
 }
 function validatePyPyVersions(currentPyPyVersion, pypyVersion) {
-    return semver.satisfies(currentPyPyVersion, pypyVersion);
+    return !semver.satisfies(currentPyPyVersion, pypyVersion);
 }
 function prepareEnvironment(installDir, pypyVersion, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1176,7 +1176,7 @@ function prepareEnvironment(installDir, pypyVersion, pythonVersion) {
 function createSymlinks(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pythonLocation = getPyPyBinary(installDir);
-        const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
+        const major = semver.major(pythonVersion) === 2 ? '' : '3';
         if (IS_WINDOWS) {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major}.exe ${pythonLocation}/python.exe`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
@@ -2779,6 +2779,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         core.info(`Download from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
+        core.info(`Download python ${python_version} and PyPy ${pypy_version}`);
         if (IS_WINDOWS) {
             downloadDir = yield tc.extractZip(pypyPath);
         }
@@ -2807,7 +2808,7 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
             const release = item.files.find(item => item.arch === architecture && item.platform === process.platform);
             return {
                 release,
-                python_version: item.pypy_version,
+                python_version: item.python_version,
                 pypy_version: item.pypy_version
             };
         }
