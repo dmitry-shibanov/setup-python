@@ -37,7 +37,7 @@ export async function installPyPy(
     architecture
   );
 
-  let archiveName = release?.filename.replace(/[.zip|.tar.bz2]/g, '');
+  let archiveName = release?.filename.replace(/.zip|.tar.bz2/g, '');
   let downloadUrl = `${release?.download_url}`;
 
   core.info(`Download from "${downloadUrl}"`);
