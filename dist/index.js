@@ -1124,29 +1124,21 @@ function prepareVersions(versionSpec) {
 function findPyPyVersion(versionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         const pypyVersionSpec = prepareVersions(versionSpec);
+        if (IS_WINDOWS) {
+            architecture = 'x86';
+        }
         const findPyPy = tc.find.bind(undefined, 'PyPy', pypyVersionSpec.pythonVersion);
         let installDir = findPyPy(architecture);
-        if (!installDir && IS_WINDOWS) {
-            // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
-            // On our Windows virtual environments, we only install an x86 version.
-            // Fall back to x86.
-            installDir = findPyPy('x86');
+        if (installDir) {
+            const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
+            const shouldReInstall = validatePyPyVersions(version, pypyVersionSpec.pypyVersion);
+            if (shouldReInstall) {
+                installDir = null;
+            }
         }
         if (!installDir) {
             installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture);
-            const pypyData = yield prepareEnvironment(installDir, pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion);
             yield createSymlinks(installDir, pypyVersionSpec.pythonVersion);
-            return pypyData;
-        }
-        // On Linux and macOS, the Python interpreter is in 'bin'.
-        // On Windows, it is in the installation root.
-        const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
-        const shouldReInstall = validatePyPyVersions(version, pypyVersionSpec.pypyVersion);
-        if (!shouldReInstall) {
-            installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture);
-            const pypyData = yield prepareEnvironment(installDir, pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion);
-            yield createSymlinks(installDir, pypyVersionSpec.pythonVersion);
-            return pypyData;
         }
         return yield prepareEnvironment(installDir, pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion);
     });
@@ -2808,9 +2800,6 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
             return semver.compare(a.pypy_version, b.pypy_version);
         }
     });
-    if (IS_WINDOWS) {
-        architecture = 'x86';
-    }
     for (let item of sortedReleases) {
         if (semver.satisfies(item.python_version, pythonVersion) &&
             semver.satisfies(item.pypy_version, pypyVersion)) {

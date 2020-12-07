@@ -44,6 +44,9 @@ export async function findPyPyVersion(
   architecture: string
 ): Promise<InstalledVersion> {
   const pypyVersionSpec = prepareVersions(versionSpec);
+  if (IS_WINDOWS) {
+    architecture = 'x86';
+  }
   const findPyPy = tc.find.bind(
     undefined,
     'PyPy',
@@ -51,11 +54,20 @@ export async function findPyPyVersion(
   );
   let installDir: string | null = findPyPy(architecture);
 
-  if (!installDir && IS_WINDOWS) {
-    // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
-    // On our Windows virtual environments, we only install an x86 version.
-    // Fall back to x86.
-    installDir = findPyPy('x86');
+  if (installDir) {
+    const version = await getCurrentPyPyVersion(
+      installDir,
+      pypyVersionSpec.pythonVersion
+    );
+
+    const shouldReInstall = validatePyPyVersions(
+      version,
+      pypyVersionSpec.pypyVersion
+    );
+
+    if (shouldReInstall) {
+      installDir = null;
+    }
   }
 
   if (!installDir) {
@@ -64,41 +76,8 @@ export async function findPyPyVersion(
       pypyVersionSpec.pythonRange,
       architecture
     );
-    const pypyData = await prepareEnvironment(
-      installDir,
-      pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pythonVersion
-    );
+
     await createSymlinks(installDir, pypyVersionSpec.pythonVersion);
-    return pypyData;
-  }
-
-  // On Linux and macOS, the Python interpreter is in 'bin'.
-  // On Windows, it is in the installation root.
-  const version = await getCurrentPyPyVersion(
-    installDir,
-    pypyVersionSpec.pythonVersion
-  );
-  const shouldReInstall = validatePyPyVersions(
-    version,
-    pypyVersionSpec.pypyVersion
-  );
-
-  if (!shouldReInstall) {
-    installDir = await pypyInstall.installPyPy(
-      pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pythonRange,
-      architecture
-    );
-
-    const pypyData = await prepareEnvironment(
-      installDir,
-      pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pythonVersion
-    );
-    await createSymlinks(installDir, pypyVersionSpec.pythonVersion);
-
-    return pypyData;
   }
 
   return await prepareEnvironment(
