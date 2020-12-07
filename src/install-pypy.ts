@@ -7,10 +7,19 @@ import * as semver from 'semver';
 const IS_WINDOWS = process.platform === 'win32';
 const IS_MACOS = process.platform === 'darwin';
 
-interface IPyPyRelease {
+interface IPyPyDownloads {
+  filename: string;
+  arch: string;
+  platform: string;
+  download_url: string;
+}
+
+interface IPyPyToolRelease {
   pypy_version: string;
   python_version: string;
-  package: string;
+  stable: boolean;
+  latest_pypy: boolean;
+  files: IPyPyDownloads[];
 }
 
 export async function installPyPy(
@@ -18,21 +27,18 @@ export async function installPyPy(
   pythonVersion: string,
   architecture: string
 ) {
-  const platform = IS_MACOS ? 'osx' : process.platform;
-  const pypyUrl = 'https://downloads.python.org/pypy';
   let installDir;
 
   const releases = await getPyPyReleases();
-  const arch = architecture.replace('x', '');
   const release = await findRelease(
-    releases!,
+    releases,
     pythonVersion,
     pypyVersion,
-    platform
+    architecture
   );
 
-  let archiveName = release?.package.replace(/[.zip|.tar.bz2]/g, '');
-  let downloadUrl = `${pypyUrl}/${release?.package}`;
+  let archiveName = release?.filename;
+  let downloadUrl = `${release?.download_url}`;
 
   core.info(`Download from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
@@ -51,39 +57,29 @@ export async function installPyPy(
 }
 
 async function getPyPyReleases() {
-  const page = await tc.downloadTool('https://downloads.python.org/pypy/');
-  const body = fs.readFileSync(page).toString();
-  core.debug(body);
-  const matches = body.match(/"pypy*(.*?)\s*[zip|bz2]\"/g);
-  const releases: IPyPyRelease[] | undefined = matches?.map(item => {
-    const validItem = item.replace(/"/g, '');
-    let args = validItem.split('-');
-    const pythonVersion = args[0].replace('pypy', '');
-    const pypyVersion = semver.clean(args[1]);
-    const release: IPyPyRelease = {
-      pypy_version: pypyVersion!,
-      python_version: pythonVersion,
-      package: validItem
-    };
-    return release;
-  });
+  const jsonContent = await tc.downloadTool(
+    'https://downloads.python.org/pypy/versions.json'
+  );
+  const releases: IPyPyToolRelease[] = JSON.parse(
+    fs.readFileSync(jsonContent).toString()
+  );
 
   return releases;
 }
 
 function findRelease(
-  releases: IPyPyRelease[],
+  releases: IPyPyToolRelease[],
   pythonVersion: string,
   pypyVersion: string,
-  platform: string
+  architecture: string
 ) {
   const filterReleases = releases.filter(
     item =>
-      item.package.includes(platform) &&
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion)
   );
 
+  // should we sort it ?
   const sortedReleases = filterReleases.sort((a, b) => {
     let result = semver.compare(a.pypy_version, b.pypy_version);
     if (result !== 0) {
@@ -98,17 +94,11 @@ function findRelease(
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion)
     ) {
-      return item;
+      return item.files.find(
+        item => item.arch === architecture && item.platform === process.platform
+      );
     }
   }
 
   return null;
-}
-
-function validSemverVersion(pythonVersion: string) {
-  if (!pythonVersion.includes('.x')) {
-    pythonVersion = `${pythonVersion}.x`;
-  }
-
-  return pythonVersion;
 }
