@@ -2808,6 +2808,9 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
             return semver.compare(a.pypy_version, b.pypy_version);
         }
     });
+    if (IS_WINDOWS) {
+        architecture = 'x86';
+    }
     for (let item of sortedReleases) {
         if (semver.satisfies(item.python_version, pythonVersion) &&
             semver.satisfies(item.pypy_version, pypyVersion)) {
