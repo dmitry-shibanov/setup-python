@@ -1106,13 +1106,18 @@ const IS_WINDOWS = process.platform === 'win32';
 function prepareVersions(versionSpec) {
     const versions = versionSpec.split('-');
     const pypyVersion = semver.clean(versions[1]);
+    let pythonRange;
     let pythonVersion = versions[0].replace('pypy', '');
     if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
-        pythonVersion = `${pythonVersion}.x`;
+        pythonRange = `${pythonVersion}.x`;
+    }
+    else {
+        pythonRange = pythonVersion;
     }
     const data = {
         pypyVersion: pypyVersion,
-        pythonVersion: pythonVersion
+        pythonRange: pythonRange,
+        pythonVersion: pythonVersion.replace('.x', '')
     };
     return data;
 }
@@ -1128,17 +1133,17 @@ function findPyPyVersion(versionSpec, architecture) {
             installDir = findPyPy('x86');
         }
         if (!installDir) {
-            installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture);
+            installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture);
             const pypyData = yield prepareEnvironment(installDir, pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion);
             yield createSymlinks(installDir, pypyVersionSpec.pythonVersion);
             return pypyData;
         }
         // On Linux and macOS, the Python interpreter is in 'bin'.
         // On Windows, it is in the installation root.
-        const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
+        const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonRange);
         const shouldReInstall = validatePyPyVersions(version, pypyVersionSpec.pypyVersion);
         if (!shouldReInstall) {
-            installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture);
+            installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture);
             const pypyData = yield prepareEnvironment(installDir, pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion);
             yield createSymlinks(installDir, pypyVersionSpec.pythonVersion);
             return pypyData;

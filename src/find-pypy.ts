@@ -16,18 +16,24 @@ interface InstalledVersion {
 interface IPyPyData {
   pypyVersion: string;
   pythonVersion: string;
+  pythonRange: string;
 }
 
 function prepareVersions(versionSpec: string) {
   const versions = versionSpec.split('-');
   const pypyVersion = semver.clean(versions[1]);
+  let pythonRange;
   let pythonVersion = versions[0].replace('pypy', '');
   if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
-    pythonVersion = `${pythonVersion}.x`;
+    pythonRange = `${pythonVersion}.x`;
+  } else {
+    pythonRange = pythonVersion;
   }
+
   const data: IPyPyData = {
     pypyVersion: pypyVersion!,
-    pythonVersion: pythonVersion
+    pythonRange: pythonRange,
+    pythonVersion: pythonVersion.replace('.x', '')
   };
 
   return data;
@@ -55,7 +61,7 @@ export async function findPyPyVersion(
   if (!installDir) {
     installDir = await pypyInstall.installPyPy(
       pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pythonVersion,
+      pypyVersionSpec.pythonRange,
       architecture
     );
     const pypyData = await prepareEnvironment(
@@ -71,7 +77,7 @@ export async function findPyPyVersion(
   // On Windows, it is in the installation root.
   const version = await getCurrentPyPyVersion(
     installDir,
-    pypyVersionSpec.pythonVersion
+    pypyVersionSpec.pythonRange
   );
   const shouldReInstall = validatePyPyVersions(
     version,
@@ -81,7 +87,7 @@ export async function findPyPyVersion(
   if (!shouldReInstall) {
     installDir = await pypyInstall.installPyPy(
       pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pythonVersion,
+      pypyVersionSpec.pythonRange,
       architecture
     );
 
