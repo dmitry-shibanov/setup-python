@@ -1102,6 +1102,7 @@ const exec = __importStar(__webpack_require__(986));
 const semver = __importStar(__webpack_require__(876));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
+const fs = __importStar(__webpack_require__(747));
 const IS_WINDOWS = process.platform === 'win32';
 function findPyPyVersion(versionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1188,7 +1189,9 @@ function createSymlinks(installDir, pythonVersion) {
         }
         else {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`);
-            yield exec.exec(`[ -e ${pythonLocation}/python ] || ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`);
+            if (!fs.existsSync(`${pythonLocation}/python`)) {
+                yield exec.exec(`ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`);
+            }
             yield exec.exec(`chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
             yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);

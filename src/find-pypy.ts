@@ -5,6 +5,7 @@ import * as exec from '@actions/exec';
 import * as semver from 'semver';
 import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
+import * as fs from 'fs';
 
 const IS_WINDOWS = process.platform === 'win32';
 
@@ -146,9 +147,11 @@ async function createSymlinks(installDir: string, pythonVersion: string) {
     await exec.exec(
       `ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`
     );
-    await exec.exec(
-      `[ -e ${pythonLocation}/python ] || ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`
-    );
+    if (!fs.existsSync(`${pythonLocation}/python`)) {
+      await exec.exec(
+        `ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`
+      );
+    }
     await exec.exec(
       `chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`
     );
