@@ -1177,15 +1177,16 @@ function createSymlinks(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pythonLocation = getPyPyBinary(installDir);
         const major = semver.major(pythonVersion) === 2 ? '' : '3';
+        const majorVersion = semver.major(pythonVersion);
         if (IS_WINDOWS) {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major}.exe ${pythonLocation}/python.exe`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
             yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
         }
         else {
-            yield exec.exec(`ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${major}`);
-            yield exec.exec(`ln -s ${pythonLocation}/python${major} ${pythonLocation}/python`);
-            yield exec.exec(`chmod +x ${pythonLocation}/python ${pythonLocation}/python${major}`);
+            yield exec.exec(`ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`);
+            yield exec.exec(`ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`);
+            yield exec.exec(`chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
             yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
         }

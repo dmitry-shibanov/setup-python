@@ -128,6 +128,7 @@ async function prepareEnvironment(
 async function createSymlinks(installDir: string, pythonVersion: string) {
   const pythonLocation = getPyPyBinary(installDir);
   const major = semver.major(pythonVersion) === 2 ? '' : '3';
+  const majorVersion = semver.major(pythonVersion);
 
   if (IS_WINDOWS) {
     await exec.exec(
@@ -139,13 +140,13 @@ async function createSymlinks(installDir: string, pythonVersion: string) {
     );
   } else {
     await exec.exec(
-      `ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${major}`
+      `ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`
     );
     await exec.exec(
-      `ln -s ${pythonLocation}/python${major} ${pythonLocation}/python`
+      `ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`
     );
     await exec.exec(
-      `chmod +x ${pythonLocation}/python ${pythonLocation}/python${major}`
+      `chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`
     );
     await exec.exec(`${pythonLocation}/python -m ensurepip`);
     await exec.exec(
