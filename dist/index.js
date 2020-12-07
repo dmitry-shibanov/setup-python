@@ -1105,7 +1105,7 @@ const tc = __importStar(__webpack_require__(533));
 const IS_WINDOWS = process.platform === 'win32';
 function prepareVersions(versionSpec) {
     const versions = versionSpec.split('-');
-    const pypyVersion = semver.clean(versions[1]);
+    const pypyVersion = versions[1].replace('v', '');
     let pythonRange;
     let pythonVersion = versions[0].replace('pypy', '');
     if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
@@ -2761,24 +2761,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(__webpack_require__(622));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
+const fs = __importStar(__webpack_require__(747));
+const semver = __importStar(__webpack_require__(876));
 const IS_WINDOWS = process.platform === 'win32';
 const IS_MACOS = process.platform === 'darwin';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
-        const platform = IS_MACOS ? 'osx' : process.platform;
-        const pypyUrl = 'https://downloads.python.org/pypy';
-        let downloadUrl;
-        let archiveName;
         let installDir;
-        if (IS_WINDOWS) {
-            archiveName = `pypy${pythonVersion}-v${pypyVersion}-${platform}`;
-            downloadUrl = `${pypyUrl}/pypy${pythonVersion}-v${pypyVersion}-${platform}.zip`;
-        }
-        else {
-            const arch = architecture.replace('x', '');
-            archiveName = `pypy${pythonVersion}-v${pypyVersion}-${platform}${arch}`;
-            downloadUrl = `${pypyUrl}/pypy${pythonVersion}-v${pypyVersion}-${platform}${arch}.tar.bz2`;
-        }
+        const releases = yield getPyPyReleases();
+        const release = yield findRelease(releases, pythonVersion, pypyVersion, architecture);
+        let archiveName = release === null || release === void 0 ? void 0 : release.filename.replace(/.zip|.tar.bz2/g, '');
+        let downloadUrl = `${release === null || release === void 0 ? void 0 : release.download_url}`;
         core.info(`Download from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
@@ -2795,6 +2788,34 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
     });
 }
 exports.installPyPy = installPyPy;
+function getPyPyReleases() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const jsonContent = yield tc.downloadTool('https://downloads.python.org/pypy/versions.json');
+        const releases = JSON.parse(fs.readFileSync(jsonContent).toString());
+        return releases;
+    });
+}
+function findRelease(releases, pythonVersion, pypyVersion, architecture) {
+    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
+        semver.satisfies(item.pypy_version, pypyVersion));
+    // should we sort it ?
+    const sortedReleases = filterReleases.sort((a, b) => {
+        let result = semver.compare(a.pypy_version, b.pypy_version);
+        if (result !== 0) {
+            return result;
+        }
+        else {
+            return semver.compare(a.pypy_version, b.pypy_version);
+        }
+    });
+    for (let item of sortedReleases) {
+        if (semver.satisfies(item.python_version, pythonVersion) &&
+            semver.satisfies(item.pypy_version, pypyVersion)) {
+            return item.files.find(item => item.arch === architecture && item.platform === process.platform);
+        }
+    }
+    return null;
+}
 
 
 /***/ }),

@@ -21,7 +21,7 @@ interface IPyPyData {
 
 function prepareVersions(versionSpec: string) {
   const versions = versionSpec.split('-');
-  const pypyVersion = semver.clean(versions[1]);
+  const pypyVersion = versions[1].replace('v', '');
   let pythonRange;
   let pythonVersion = versions[0].replace('pypy', '');
   if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
