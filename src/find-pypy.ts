@@ -13,12 +13,36 @@ interface InstalledVersion {
   version: string;
 }
 
+interface IPyPyData {
+  pypyVersion: string;
+  pythonVersion: string;
+}
+
+function prepareVersions(versionSpec: string) {
+  const versions = versionSpec.split('-');
+  const pypyVersion = semver.clean(versions[1]);
+  let pythonVersion = versions[0].replace('pypy', '');
+  if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
+    pythonVersion = `${pythonVersion}.x`;
+  }
+  const data: IPyPyData = {
+    pypyVersion: pypyVersion!,
+    pythonVersion: pythonVersion
+  };
+
+  return data;
+}
+
 export async function findPyPyVersion(
-  pythonVersion: string,
-  pypyVersion: string,
+  versionSpec: string,
   architecture: string
 ): Promise<InstalledVersion> {
-  const findPyPy = tc.find.bind(undefined, 'PyPy', pythonVersion);
+  const pypyVersionSpec = prepareVersions(versionSpec);
+  const findPyPy = tc.find.bind(
+    undefined,
+    'PyPy',
+    pypyVersionSpec.pythonVersion
+  );
   let installDir: string | null = findPyPy(architecture);
 
   if (!installDir && IS_WINDOWS) {
@@ -30,42 +54,52 @@ export async function findPyPyVersion(
 
   if (!installDir) {
     installDir = await pypyInstall.installPyPy(
-      pypyVersion,
-      pythonVersion,
+      pypyVersionSpec.pypyVersion,
+      pypyVersionSpec.pythonVersion,
       architecture
     );
     const pypyData = await prepareEnvironment(
       installDir,
-      pypyVersion,
-      pythonVersion
+      pypyVersionSpec.pypyVersion,
+      pypyVersionSpec.pythonVersion
     );
-    await createSymolinks(installDir, pythonVersion);
+    await createSymlinks(installDir, pypyVersionSpec.pythonVersion);
     return pypyData;
   }
 
   // On Linux and macOS, the Python interpreter is in 'bin'.
   // On Windows, it is in the installation root.
-  const version = await getCurrentPyPyVersion(installDir, pythonVersion);
-  const shouldReInstall = validatePyPyVersions(version, pypyVersion);
+  const version = await getCurrentPyPyVersion(
+    installDir,
+    pypyVersionSpec.pythonVersion
+  );
+  const shouldReInstall = validatePyPyVersions(
+    version,
+    pypyVersionSpec.pypyVersion
+  );
 
   if (!shouldReInstall) {
     installDir = await pypyInstall.installPyPy(
-      pypyVersion,
-      pythonVersion,
+      pypyVersionSpec.pypyVersion,
+      pypyVersionSpec.pythonVersion,
       architecture
     );
 
     const pypyData = await prepareEnvironment(
       installDir,
-      pypyVersion,
-      pythonVersion
+      pypyVersionSpec.pypyVersion,
+      pypyVersionSpec.pythonVersion
     );
-    await createSymolinks(installDir, pythonVersion);
+    await createSymlinks(installDir, pypyVersionSpec.pythonVersion);
 
     return pypyData;
   }
 
-  return await prepareEnvironment(installDir, pypyVersion, pythonVersion);
+  return await prepareEnvironment(
+    installDir,
+    pypyVersionSpec.pypyVersion,
+    pypyVersionSpec.pythonVersion
+  );
 }
 
 async function getCurrentPyPyVersion(
@@ -73,7 +107,7 @@ async function getCurrentPyPyVersion(
   pythonVersion: string
 ) {
   const pypyBinary = getPyPyBinary(installDir);
-  const major = pythonVersion.split('.')[0] == '2' ? '' : '3'; // change to semver notation
+  const major = semver.major(pythonVersion) === 2 ? '' : '3';
   let versionOutput = '';
   let errorOutput = '';
 
@@ -104,7 +138,7 @@ async function getCurrentPyPyVersion(
 }
 
 function validatePyPyVersions(currentPyPyVersion: string, pypyVersion: string) {
-  return currentPyPyVersion.includes(pypyVersion);
+  return semver.satisfies(currentPyPyVersion, pypyVersion);
 }
 
 async function prepareEnvironment(
@@ -123,12 +157,12 @@ async function prepareEnvironment(
   const impl = 'pypy' + pypyVersion;
   core.setOutput('python-version', impl);
 
-  return {impl: impl, version: versionFromPath(installDir)};
+  return {impl: impl, version: pythonVersion};
 }
 
-async function createSymolinks(installDir: string, pythonVersion: string) {
+async function createSymlinks(installDir: string, pythonVersion: string) {
   const pythonLocation = getPyPyBinary(installDir);
-  const major = pythonVersion.split('.')[0] == '2' ? '' : '3'; // change to semver notation
+  const major = semver.major(pythonVersion) === 2 ? '' : '3';
 
   if (IS_WINDOWS) {
     await exec.exec(
@@ -153,14 +187,6 @@ async function createSymolinks(installDir: string, pythonVersion: string) {
       `${pythonLocation}/python -m pip install --ignore-installed pip`
     );
   }
-}
-
-/** Extracts python version from install path from hosted tool cache as described in README.md */
-function versionFromPath(installDir: string) {
-  const parts = installDir.split(path.sep);
-  const idx = parts.findIndex(part => part === 'PyPy' || part === 'Python');
-
-  return parts[idx + 1] || '';
 }
 
 function getPyPyBinary(installDir: string) {
