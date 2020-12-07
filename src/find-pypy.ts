@@ -77,7 +77,7 @@ export async function findPyPyVersion(
   // On Windows, it is in the installation root.
   const version = await getCurrentPyPyVersion(
     installDir,
-    pypyVersionSpec.pythonRange
+    pypyVersionSpec.pythonVersion
   );
   const shouldReInstall = validatePyPyVersions(
     version,
@@ -113,7 +113,7 @@ async function getCurrentPyPyVersion(
   pythonVersion: string
 ) {
   const pypyBinary = getPyPyBinary(installDir);
-  const major = semver.major(pythonVersion) === 2 ? '' : '3';
+  const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
   let versionOutput = '';
   let errorOutput = '';
 
@@ -168,7 +168,7 @@ async function prepareEnvironment(
 
 async function createSymlinks(installDir: string, pythonVersion: string) {
   const pythonLocation = getPyPyBinary(installDir);
-  const major = semver.major(pythonVersion) === 2 ? '' : '3';
+  const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
 
   if (IS_WINDOWS) {
     await exec.exec(

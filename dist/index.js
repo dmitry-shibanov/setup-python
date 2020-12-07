@@ -1140,7 +1140,7 @@ function findPyPyVersion(versionSpec, architecture) {
         }
         // On Linux and macOS, the Python interpreter is in 'bin'.
         // On Windows, it is in the installation root.
-        const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonRange);
+        const version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
         const shouldReInstall = validatePyPyVersions(version, pypyVersionSpec.pypyVersion);
         if (!shouldReInstall) {
             installDir = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonRange, architecture);
@@ -1155,7 +1155,7 @@ exports.findPyPyVersion = findPyPyVersion;
 function getCurrentPyPyVersion(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pypyBinary = getPyPyBinary(installDir);
-        const major = semver.major(pythonVersion) === 2 ? '' : '3';
+        const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
         let versionOutput = '';
         let errorOutput = '';
         yield exec.exec(`${pypyBinary}/pypy${major} --version`, [], {
@@ -1199,7 +1199,7 @@ function prepareEnvironment(installDir, pypyVersion, pythonVersion) {
 function createSymlinks(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pythonLocation = getPyPyBinary(installDir);
-        const major = semver.major(pythonVersion) === 2 ? '' : '3';
+        const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
         if (IS_WINDOWS) {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major}.exe ${pythonLocation}/python.exe`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
