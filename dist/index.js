@@ -2790,6 +2790,13 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         else {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
+        if (pypyVersion === 'nightly') {
+            let dirCont = fs.readdirSync(downloadDir);
+            let files = dirCont.filter(function (elm) {
+                return elm.match(/pypy-c*/gi);
+            });
+            archiveName = files[0];
+        }
         const toolDir = path.join(downloadDir, archiveName);
         const installDir = yield tc.cacheDir(toolDir, 'PyPy', python_version);
         return { installDir, python_version, pypy_version };
