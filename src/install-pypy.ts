@@ -89,6 +89,10 @@ function findRelease(
     }
   });
 
+  if (IS_WINDOWS) {
+    architecture = 'x86';
+  }
+
   for (let item of sortedReleases) {
     if (
       semver.satisfies(item.python_version, pythonVersion) &&
