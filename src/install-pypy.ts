@@ -80,16 +80,16 @@ function findRelease(
   );
 
   // should we sort it ?
-  const sortedReleases = filterReleases.sort((a, b) => {
-    let result = semver.compare(a.pypy_version, b.pypy_version);
-    if (result !== 0) {
-      return result;
-    } else {
-      return semver.compare(a.pypy_version, b.pypy_version);
-    }
-  });
+  //   const sortedReleases = filterReleases.sort((a, b) => {
+  //     let result = semver.compare(a.pypy_version, b.pypy_version);
+  //     if (result !== 0) {
+  //       return result;
+  //     } else {
+  //       return semver.compare(b.pypy_version, a.pypy_version);
+  //     }
+  //   });
 
-  for (let item of sortedReleases) {
+  for (let item of filterReleases) {
     if (
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion)

@@ -2791,16 +2791,15 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(item.pypy_version, pypyVersion));
     // should we sort it ?
-    const sortedReleases = filterReleases.sort((a, b) => {
-        let result = semver.compare(a.pypy_version, b.pypy_version);
-        if (result !== 0) {
-            return result;
-        }
-        else {
-            return semver.compare(a.pypy_version, b.pypy_version);
-        }
-    });
-    for (let item of sortedReleases) {
+    //   const sortedReleases = filterReleases.sort((a, b) => {
+    //     let result = semver.compare(a.pypy_version, b.pypy_version);
+    //     if (result !== 0) {
+    //       return result;
+    //     } else {
+    //       return semver.compare(b.pypy_version, a.pypy_version);
+    //     }
+    //   });
+    for (let item of filterReleases) {
         if (semver.satisfies(item.python_version, pythonVersion) &&
             semver.satisfies(item.pypy_version, pypyVersion)) {
             return item.files.find(item => item.arch === architecture && item.platform === process.platform);
