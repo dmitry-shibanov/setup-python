@@ -80,28 +80,21 @@ function findRelease(
   pypyVersion: string,
   architecture: string
 ) {
+  const nightly = pypyVersion === 'nightly' ? '.0' : '';
   const filterReleases = releases.filter(
     item =>
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion)
+      semver.satisfies(`${item.python_version}${nightly}`, pythonVersion) &&
+      (semver.satisfies(item.pypy_version, pypyVersion) ||
+        item.pypy_version === 'nightly')
   );
 
-  for (let item of filterReleases) {
-    if (
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion)
-    ) {
-      const release = item.files.find(
-        item => item.arch === architecture && item.platform === process.platform
-      );
+  const release = filterReleases[0].files.find(
+    item => item.arch === architecture && item.platform === process.platform
+  );
 
-      return {
-        release,
-        python_version: item.python_version,
-        pypy_version: item.pypy_version
-      };
-    }
-  }
-
-  return null;
+  return {
+    release,
+    python_version: filterReleases[0].python_version,
+    pypy_version: filterReleases[0].pypy_version
+  };
 }

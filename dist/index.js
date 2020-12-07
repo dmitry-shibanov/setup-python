@@ -1113,6 +1113,9 @@ function findPyPyVersion(versionSpec, architecture) {
         }
         const findPyPy = tc.find.bind(undefined, 'PyPy', pypyVersionSpec.pythonVersion);
         let installDir = findPyPy(architecture);
+        if (pypyVersionSpec.pypyVersion === 'nightly') {
+            installDir = null;
+        }
         if (installDir) {
             pypy_version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
             const shouldReInstall = validatePyPyVersions(pypy_version, pypyVersionSpec.pypyVersion);
@@ -1176,8 +1179,8 @@ function prepareEnvironment(installDir, pypyVersion, pythonVersion) {
 function createSymlinks(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pythonLocation = getPyPyBinary(installDir);
-        const major = semver.major(pythonVersion) === 2 ? '' : '3';
-        const majorVersion = semver.major(pythonVersion);
+        const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
+        const majorVersion = pythonVersion.split('.')[0];
         if (IS_WINDOWS) {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major}.exe ${pythonLocation}/python.exe`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
@@ -2801,20 +2804,16 @@ function getPyPyReleases() {
     });
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-        semver.satisfies(item.pypy_version, pypyVersion));
-    for (let item of filterReleases) {
-        if (semver.satisfies(item.python_version, pythonVersion) &&
-            semver.satisfies(item.pypy_version, pypyVersion)) {
-            const release = item.files.find(item => item.arch === architecture && item.platform === process.platform);
-            return {
-                release,
-                python_version: item.python_version,
-                pypy_version: item.pypy_version
-            };
-        }
-    }
-    return null;
+    const nightly = pypyVersion === 'nightly' ? '.0' : '';
+    const filterReleases = releases.filter(item => semver.satisfies(`${item.python_version}${nightly}`, pythonVersion) &&
+        (semver.satisfies(item.pypy_version, pypyVersion) ||
+            item.pypy_version === 'nightly'));
+    const release = filterReleases[0].files.find(item => item.arch === architecture && item.platform === process.platform);
+    return {
+        release,
+        python_version: filterReleases[0].python_version,
+        pypy_version: filterReleases[0].pypy_version
+    };
 }
 
 

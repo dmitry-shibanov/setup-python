@@ -36,6 +36,10 @@ export async function findPyPyVersion(
   );
   let installDir: string | null = findPyPy(architecture);
 
+  if (pypyVersionSpec.pypyVersion === 'nightly') {
+    installDir = null;
+  }
+
   if (installDir) {
     pypy_version = await getCurrentPyPyVersion(
       installDir,
@@ -127,8 +131,8 @@ async function prepareEnvironment(
 
 async function createSymlinks(installDir: string, pythonVersion: string) {
   const pythonLocation = getPyPyBinary(installDir);
-  const major = semver.major(pythonVersion) === 2 ? '' : '3';
-  const majorVersion = semver.major(pythonVersion);
+  const major = pythonVersion.split('.')[0] === '2' ? '' : '3';
+  const majorVersion = pythonVersion.split('.')[0];
 
   if (IS_WINDOWS) {
     await exec.exec(
