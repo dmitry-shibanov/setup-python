@@ -2770,7 +2770,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         let installDir;
         const releases = yield getPyPyReleases();
         const release = yield findRelease(releases, pythonVersion, pypyVersion, architecture);
-        let archiveName = release === null || release === void 0 ? void 0 : release.filename;
+        let archiveName = release === null || release === void 0 ? void 0 : release.filename.replace(/[.zip|.tar.bz2]/g, '');
         let downloadUrl = `${release === null || release === void 0 ? void 0 : release.download_url}`;
         core.info(`Download from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
