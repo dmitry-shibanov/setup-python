@@ -1105,7 +1105,7 @@ const tc = __importStar(__webpack_require__(533));
 const IS_WINDOWS = process.platform === 'win32';
 function prepareVersions(versionSpec) {
     const versions = versionSpec.split('-');
-    const pypyVersion = semver.clean(versions[1]);
+    const pypyVersion = versions[1].replace('v', '');
     let pythonRange;
     let pythonVersion = versions[0].replace('pypy', '');
     if (!pythonVersion.includes('.x') && !semver.valid(pythonVersion)) {
