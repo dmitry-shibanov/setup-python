@@ -11,7 +11,9 @@ async function run() {
     const arch: string = core.getInput('architecture') || os.arch();
     if (pypyVersion) {
       const installed = await finderPyPy.findPyPyVersion(pypyVersion, arch);
-      core.info(`Successfully setup ${installed.impl} (${installed.version})`);
+      core.info(
+        `Successfully setup PyPy ${installed.pypy_version} with Python (${installed.python_version})`
+      );
     } else if (version) {
       const installed = await finder.findPythonVersion(version, arch);
       core.info(`Successfully setup ${installed.impl} (${installed.version})`);

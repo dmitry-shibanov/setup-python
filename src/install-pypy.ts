@@ -5,7 +5,6 @@ import * as fs from 'fs';
 import * as semver from 'semver';
 
 const IS_WINDOWS = process.platform === 'win32';
-const IS_MACOS = process.platform === 'darwin';
 
 interface IPyPyDownloads {
   filename: string;
@@ -27,33 +26,40 @@ export async function installPyPy(
   pythonVersion: string,
   architecture: string
 ) {
-  let installDir;
+  let downloadDir;
 
   const releases = await getPyPyReleases();
-  const release = await findRelease(
+  const releaseData = await findRelease(
     releases,
     pythonVersion,
     pypyVersion,
     architecture
   );
 
-  let archiveName = release?.filename.replace(/.zip|.tar.bz2/g, '');
-  let downloadUrl = `${release?.download_url}`;
+  if (!releaseData || !releaseData.release) {
+    throw new Error(
+      `The specifyed release with pypy version ${pypyVersion} and python version ${pythonVersion} was not found`
+    );
+  }
+
+  const {release, python_version, pypy_version} = releaseData;
+  let archiveName = release.filename.replace(/.zip|.tar.bz2/g, '');
+  let downloadUrl = `${release.download_url}`;
 
   core.info(`Download from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
 
   if (IS_WINDOWS) {
-    installDir = await tc.extractZip(pypyPath);
+    downloadDir = await tc.extractZip(pypyPath);
   } else {
-    installDir = await tc.extractTar(pypyPath, undefined, 'x');
+    downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
-  core.info(`install dir is ${installDir}`);
-  const toolDir = path.join(installDir, archiveName!);
-  const cacheDir = await tc.cacheDir(toolDir, 'PyPy', pythonVersion);
 
-  return cacheDir;
+  const toolDir = path.join(downloadDir, archiveName!);
+  const installDir = await tc.cacheDir(toolDir, 'PyPy', python_version);
+
+  return {installDir, python_version, pypy_version};
 }
 
 async function getPyPyReleases() {
@@ -79,24 +85,20 @@ function findRelease(
       semver.satisfies(item.pypy_version, pypyVersion)
   );
 
-  // should we sort it ?
-  //   const sortedReleases = filterReleases.sort((a, b) => {
-  //     let result = semver.compare(a.pypy_version, b.pypy_version);
-  //     if (result !== 0) {
-  //       return result;
-  //     } else {
-  //       return semver.compare(b.pypy_version, a.pypy_version);
-  //     }
-  //   });
-
   for (let item of filterReleases) {
     if (
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion)
     ) {
-      return item.files.find(
+      const release = item.files.find(
         item => item.arch === architecture && item.platform === process.platform
       );
+
+      return {
+        release,
+        python_version: item.pypy_version,
+        pypy_version: item.pypy_version
+      };
     }
   }
 
