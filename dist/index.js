@@ -1188,7 +1188,7 @@ function createSymlinks(installDir, pythonVersion) {
         }
         else {
             yield exec.exec(`ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`);
-            yield exec.exec(`ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`);
+            yield exec.exec(`[ -e ${pythonLocation}/python ] || ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`);
             yield exec.exec(`chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`);
             yield exec.exec(`${pythonLocation}/python -m ensurepip`);
             yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);

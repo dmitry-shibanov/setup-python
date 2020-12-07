@@ -147,7 +147,7 @@ async function createSymlinks(installDir: string, pythonVersion: string) {
       `ln -s ${pythonLocation}/pypy${major} ${pythonLocation}/python${majorVersion}`
     );
     await exec.exec(
-      `ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`
+      `[ -e ${pythonLocation}/python ] || ln -s ${pythonLocation}/python${majorVersion} ${pythonLocation}/python`
     );
     await exec.exec(
       `chmod +x ${pythonLocation}/python ${pythonLocation}/python${majorVersion}`
