@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as pypyInstall from './install-pypy';
+import * as fs from 'fs';
 
 import * as exec from '@actions/exec';
 import * as semver from 'semver';
@@ -19,7 +20,9 @@ export async function findPyPyVersion(
 ): Promise<{resolvedPyPyVersion: string; resolvedPythonVersion: string}> {
   let resolvedPyPyVersion = '';
   let resolvedPythonVersion = '';
+  // TO-DO
 
+  // findAllversions from toolcache
   const pypyVersionSpec = parsePyPyVersion(versionSpec);
   if (IS_WINDOWS) {
     // TO-DO think about architecture
@@ -59,6 +62,12 @@ export async function findPyPyVersion(
       getPyPyBinaryPath(installDir),
       resolvedPythonVersion
     );
+
+    const pypyFilePath = path.join(installDir, 'pypy_version');
+    fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+
+    const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
+    core.debug(`pypyFileContent is ${pypyFileContent}`);
   }
 
   const pythonLocation = getPyPyBinaryPath(installDir);

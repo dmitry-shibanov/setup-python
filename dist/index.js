@@ -1098,6 +1098,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(__webpack_require__(622));
 const pypyInstall = __importStar(__webpack_require__(369));
+const fs = __importStar(__webpack_require__(747));
 const exec = __importStar(__webpack_require__(986));
 const semver = __importStar(__webpack_require__(876));
 const core = __importStar(__webpack_require__(470));
@@ -1107,6 +1108,8 @@ function findPyPyVersion(versionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let resolvedPyPyVersion = '';
         let resolvedPythonVersion = '';
+        // TO-DO
+        // findAllversions from toolcache
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
         if (IS_WINDOWS) {
             // TO-DO think about architecture
@@ -1127,6 +1130,10 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
+            const pypyFilePath = path.join(installDir, 'pypy_version');
+            fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+            const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
+            core.debug(`pypyFileContent is ${pypyFileContent}`);
         }
         const pythonLocation = getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
@@ -2788,7 +2795,7 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         const pypyLocation = path.join(pypyBinaryPath, 'pypy');
         yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         if (pypyBinaryPostfix) {
-            yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`);
+            yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pypyLocation}${binaryExtension}`);
         }
         yield exec.exec(`ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
