@@ -8,11 +8,6 @@ import * as tc from '@actions/tool-cache';
 
 const IS_WINDOWS = process.platform === 'win32';
 
-interface InstalledVersion {
-  python_version: string;
-  pypy_version: string;
-}
-
 interface IPyPyVersionSpec {
   pypyVersion: semver.Range;
   pythonVersion: semver.Range;
@@ -21,13 +16,13 @@ interface IPyPyVersionSpec {
 export async function findPyPyVersion(
   versionSpec: string,
   architecture: string
-): Promise<InstalledVersion> {
-  let pypy_version = '';
-  let python_version = '';
+): Promise<{resolvedPyPyVersion: string; resolvedPythonVersion: string}> {
+  let resolvedPyPyVersion = '';
+  let resolvedPythonVersion = '';
 
   const pypyVersionSpec = parsePyPyVersion(versionSpec);
   if (IS_WINDOWS) {
-    // TO-DO about architecture
+    // TO-DO think about architecture
     architecture = 'x86';
   }
 
@@ -38,35 +33,43 @@ export async function findPyPyVersion(
   );
 
   if (installDir) {
-    pypy_version = await getExactPyPyVersion(installDir);
+    resolvedPyPyVersion = await getExactPyPyVersion(installDir);
 
-    const shouldReinstall = isPyPyVersionSatisfies(
-      pypy_version,
+    const isPyPyVersionSatisfies = semver.satisfies(
+      resolvedPyPyVersion,
       pypyVersionSpec.pypyVersion
     );
-
-    if (shouldReinstall) {
+    if (!isPyPyVersionSatisfies) {
       installDir = null;
     }
   }
 
   if (!installDir) {
-    ({installDir, python_version, pypy_version} = await pypyInstall.installPyPy(
+    ({
+      installDir,
+      resolvedPythonVersion,
+      resolvedPyPyVersion
+    } = await pypyInstall.installPyPy(
       pypyVersionSpec.pypyVersion,
       pypyVersionSpec.pythonVersion,
       architecture
     ));
 
-    await pypyInstall.createSymlinks(getPyPyBinary(installDir), python_version);
+    await pypyInstall.createSymlinks(
+      getPyPyBinaryPath(installDir),
+      resolvedPythonVersion
+    );
   }
 
-  addEnvVariables(installDir);
+  const pythonLocation = getPyPyBinaryPath(installDir);
+  core.exportVariable('pythonLocation', pythonLocation);
+  core.addPath(pythonLocation);
 
-  return {pypy_version, python_version};
+  return {resolvedPyPyVersion, resolvedPythonVersion};
 }
-// To do semver easier
+
 async function getExactPyPyVersion(installDir: string) {
-  const pypyBinary = getPyPyBinary(installDir);
+  const pypyBinary = getPyPyBinaryPath(installDir);
   let versionOutput = '';
 
   await exec.exec(
@@ -81,50 +84,39 @@ async function getExactPyPyVersion(installDir: string) {
     }
   );
 
-  core.debug(`PyPy Python version output is ${versionOutput}`);
+  core.debug(`PyPy version output is ${versionOutput}`);
 
   if (!versionOutput) {
-    core.debug('Error from pypy --version call is empty');
+    core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
     return '';
   }
 
   return versionOutput;
 }
 
-function isPyPyVersionSatisfies(
-  currentPyPyVersion: string,
-  pypyVersion: semver.Range
-) {
-  return !semver.satisfies(currentPyPyVersion, pypyVersion);
-}
-
-// remove function to inline
-function addEnvVariables(installDir: string) {
-  const pythonLocation = getPyPyBinary(installDir);
-  core.exportVariable('pythonLocation', pythonLocation);
-  core.addPath(pythonLocation);
-}
-
 /** Get PyPy binary location from the tool of installation directory
  *  - On Linux and macOS, the Python interpreter is in 'bin'.
  *  - On Windows, it is in the installation root.
  */
-function getPyPyBinary(installDir: string) {
+function getPyPyBinaryPath(installDir: string) {
   const _binDir = path.join(installDir, 'bin');
   return IS_WINDOWS ? installDir : _binDir;
 }
 
 function parsePyPyVersion(versionSpec: string) {
   const versions = versionSpec.split('-');
-  const pythonVersion = new semver.Range(versions[1]);
-  const pypyVersion = new semver.Range(versions[2]);
-
-  if (!pythonVersion || !pypyVersion) {
-    throw new Error('invalid python or pypy version');
+  // check that versions[1] and versions[2]
+  // pypy-3.7
+  // pypy-3.7-vx
+  // TO-DO: should we print beatiful error message if versions parts are not semver or just throw exception
+  if (versions.length === 0) {
+    throw new Error('Please specify valid version Specification for PyPy.');
   }
+  const pythonVersion = new semver.Range(versions[1]);
+  const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
 
   const data: IPyPyVersionSpec = {
-    pypyVersion: pypyVersion!,
+    pypyVersion: pypyVersion,
     pythonVersion: pythonVersion
   };
 

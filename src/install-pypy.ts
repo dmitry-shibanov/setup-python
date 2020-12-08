@@ -1,14 +1,13 @@
 import * as path from 'path';
 import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
-import * as fs from 'fs';
 import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
 
 const IS_WINDOWS = process.platform === 'win32';
 
-interface IPyPyManifestFile {
+interface IPyPyManifestAsset {
   filename: string;
   arch: string;
   platform: string;
@@ -20,7 +19,7 @@ interface IPyPyManifestRelease {
   python_version: string;
   stable: boolean;
   latest_pypy: boolean;
-  files: IPyPyManifestFile[];
+  files: IPyPyManifestAsset[];
 }
 
 export async function installPyPy(
@@ -31,28 +30,31 @@ export async function installPyPy(
   let downloadDir;
 
   const releases = await getAvailablePyPyVersions();
-  const releaseData = await findRelease(
+  const releaseData = findRelease(
     releases,
     pythonVersion,
     pypyVersion,
     architecture
   );
 
-  if (!releaseData || !releaseData.release) {
+  if (!releaseData || !releaseData.foundAsset) {
     throw new Error(
       `The specifyed release with pypy version ${pypyVersion.raw} and python version ${pythonVersion.raw} was not found`
     );
   }
 
-  const {release, python_version, pypy_version} = releaseData;
-  let archiveName = release.filename.replace(/.zip|.tar.bz2/g, '');
-  let downloadUrl = `${release.download_url}`;
+  const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
+  let archiveName = foundAsset.filename.replace(/.zip|.tar.bz2/g, '');
+  let downloadUrl = `${foundAsset.download_url}`;
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
-  core.info(`Download python ${python_version} and PyPy ${pypy_version}`);
+  core.info(
+    `Download python ${resolvedPythonVersion} and PyPy ${resolvedPyPyVersion}`
+  );
   core.info('Extract downloaded archive');
 
+  // TO-DO: double check logs
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
@@ -63,24 +65,23 @@ export async function installPyPy(
   core.debug(`Archive name is ${archiveName}`);
 
   const toolDir = path.join(downloadDir, archiveName!);
-  const installDir = await tc.cacheDir(toolDir, 'PyPy', python_version);
+  const installDir = await tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion);
 
-  return {installDir, python_version, pypy_version};
+  return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
 
 async function getAvailablePyPyVersions() {
   const url = 'https://downloads.python.org/pypy/versions.json';
   const http: httpm.HttpClient = new httpm.HttpClient('tool-cache');
-  const headers = {};
 
-  const response = await http.getJson<IPyPyManifestRelease[]>(url, headers); // fix type from any
+  const response = await http.getJson<IPyPyManifestRelease[]>(url);
   if (!response.result) {
-    throw new Error('no data was found');
+    throw new Error(
+      `Unable to retrieve the list of available versions from '${url}'`
+    );
   }
 
-  const releases: IPyPyManifestRelease[] = response.result;
-
-  return releases;
+  return response.result;
 }
 
 /** create Symlinks for downloaded PyPy
@@ -89,24 +90,31 @@ async function getAvailablePyPyVersions() {
  */
 // input-pypy.ts
 export async function createSymlinks(
-  pythonLocation: string,
+  pypyBinaryPath: string,
   pythonVersion: string
 ) {
   const version = semver.coerce(pythonVersion)!;
-  const majorVersion = semver.major(version);
-  const major = majorVersion === 2 ? '' : '3';
+  const pythonBinaryPostfix = semver.major(version);
+  const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
 
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
+  // TO-DO: revisit necessary of symlinks
+  const pythonLocation = path.join(pypyBinaryPath, 'python');
+  const pypyLocation = path.join(pypyBinaryPath, 'pypy');
+  await exec.exec(
+    `ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
+  );
+  await exec.exec(
+    `ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`
+  );
+  await exec.exec(
+    `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
+  );
 
-  await exec.exec(
-    `ln -sfn ${pythonLocation}/pypy${major}${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
-  );
-  await exec.exec(
-    `ln -sfn ${pythonLocation}/python${majorVersion}${binaryExtension} ${pythonLocation}/python${binaryExtension}`
-  );
-  await exec.exec(
-    `chmod +x ${pythonLocation}/python${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
-  );
+  await installPiP(pypyBinaryPath);
+}
+
+async function installPiP(pythonLocation: string) {
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
@@ -123,38 +131,37 @@ function findRelease(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion) &&
-      !!item.files.find(
+      item.files.some(
         file => file.arch === architecture && file.platform === process.platform
       )
   );
 
   if (filterReleases.length === 0) {
-    throw new Error('no releases were found');
+    return null;
   }
 
+  // double check coerce
   const sortedReleases = filterReleases.sort((previous, current) => {
-    let result = semver.compare(
-      semver.coerce(current.pypy_version)!,
-      semver.coerce(previous.pypy_version)!
-    );
-
-    if (result === 0) {
-      return semver.compare(
+    return (
+      semver.compare(
         semver.coerce(current.pypy_version)!,
+        semver.coerce(previous.pypy_version)!
+      ) ||
+      semver.compare(
+        semver.coerce(current.python_version)!,
         semver.coerce(previous.python_version)!
-      );
-    }
-
-    return result;
+      )
+    );
   });
 
-  const release = sortedReleases[0].files.find(
+  const foundRelease = sortedReleases[0];
+  const foundAsset = foundRelease.files.find(
     item => item.arch === architecture && item.platform === process.platform
   );
 
   return {
-    release,
-    python_version: sortedReleases[0].python_version,
-    pypy_version: sortedReleases[0].pypy_version
+    foundAsset,
+    resolvedPythonVersion: foundRelease.python_version,
+    resolvedPyPyVersion: foundRelease.pypy_version
   };
 }
