@@ -2579,7 +2579,7 @@ function run() {
         try {
             let version = core.getInput('python-version');
             const arch = core.getInput('architecture') || os.arch();
-            if (version.includes('-')) {
+            if (version.includes('pypy-')) {
                 const installed = yield finderPyPy.findPyPyVersion(version, arch);
                 core.info(`Successfully setup PyPy ${installed.pypy_version} with Python (${installed.python_version})`);
             }
