@@ -3,32 +3,33 @@ import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
 import * as fs from 'fs';
 import * as semver from 'semver';
+import * as httpm from '@actions/http-client';
 
 const IS_WINDOWS = process.platform === 'win32';
 
-interface IPyPyDownload {
+interface IPyPyManifestFile {
   filename: string;
   arch: string;
   platform: string;
   download_url: string;
 }
 
-interface IPyPylRelease {
+interface IPyPyManifestRelease {
   pypy_version: string;
   python_version: string;
   stable: boolean;
   latest_pypy: boolean;
-  files: IPyPyDownload[];
+  files: IPyPyManifestFile[];
 }
 
 export async function installPyPy(
-  pypyVersion: string,
-  pythonVersion: string,
+  pypyVersion: semver.Range,
+  pythonVersion: semver.Range,
   architecture: string
 ) {
   let downloadDir;
 
-  const releases = await getPyPyReleases();
+  const releases = await getAvailablePyPyVersions();
   const releaseData = await findRelease(
     releases,
     pythonVersion,
@@ -38,7 +39,7 @@ export async function installPyPy(
 
   if (!releaseData || !releaseData.release) {
     throw new Error(
-      `The specifyed release with pypy version ${pypyVersion} and python version ${pythonVersion} was not found`
+      `The specifyed release with pypy version ${pypyVersion.raw} and python version ${pythonVersion.raw} was not found`
     );
   }
 
@@ -66,35 +67,65 @@ export async function installPyPy(
   return {installDir, python_version, pypy_version};
 }
 
-async function getPyPyReleases() {
-  const jsonPath = await tc.downloadTool(
-    'https://downloads.python.org/pypy/versions.json'
-  );
-  const jsonString = fs.readFileSync(jsonPath).toString();
-  const releases: IPyPylRelease[] = JSON.parse(jsonString);
+async function getAvailablePyPyVersions() {
+  const url = 'https://downloads.python.org/pypy/versions.json';
+  const jsonPath = await tc.downloadTool(url);
+
+  const http: httpm.HttpClient = new httpm.HttpClient('tool-cache');
+  const headers = {};
+
+  const response = await http.getJson<any>(url, headers); // fix type from any
+  if (!response.result) {
+    throw new Error('no data was found');
+  }
+
+  const releases: IPyPyManifestRelease[] = JSON.parse(response.result);
 
   return releases;
 }
 
 function findRelease(
-  releases: IPyPylRelease[],
-  pythonVersion: string,
-  pypyVersion: string,
+  releases: IPyPyManifestRelease[],
+  pythonVersion: semver.Range,
+  pypyVersion: semver.Range,
   architecture: string
 ) {
   const filterReleases = releases.filter(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion)
+      semver.satisfies(item.pypy_version, pypyVersion) &&
+      item.files.find(
+        file => file.arch === architecture && file.platform === process.platform
+      )
   );
 
-  const release = filterReleases[0].files.find(
+  if (filterReleases.length > 0) {
+    throw new Error('no releases were found');
+  }
+
+  const sortedReleases = filterReleases.sort((previous, current) => {
+    let result = semver.compare(
+      semver.coerce(current.pypy_version)!,
+      semver.coerce(previous.pypy_version)!
+    );
+
+    if (result === 0) {
+      return semver.compare(
+        semver.coerce(current.pypy_version)!,
+        semver.coerce(previous.python_version)!
+      );
+    }
+
+    return result;
+  });
+
+  const release = sortedReleases[0].files.find(
     item => item.arch === architecture && item.platform === process.platform
   );
 
   return {
     release,
-    python_version: filterReleases[0].python_version,
-    pypy_version: filterReleases[0].pypy_version
+    python_version: sortedReleases[0].python_version,
+    pypy_version: sortedReleases[0].pypy_version
   };
 }
