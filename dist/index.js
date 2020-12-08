@@ -1130,10 +1130,11 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
+            core.info('debu creation files');
             const pypyFilePath = path.join(installDir, 'pypy_version');
             fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
             const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
-            core.debug(`pypyFileContent is ${pypyFileContent}`);
+            core.info(`pypyFileContent is ${pypyFileContent}`);
         }
         const pythonLocation = getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
