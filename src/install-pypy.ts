@@ -92,12 +92,12 @@ function findRelease(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
       semver.satisfies(item.pypy_version, pypyVersion) &&
-      item.files.find(
+      !!item.files.find(
         file => file.arch === architecture && file.platform === process.platform
       )
   );
 
-  if (filterReleases.length > 0) {
+  if (filterReleases.length < 0) {
     throw new Error('no releases were found');
   }
 
