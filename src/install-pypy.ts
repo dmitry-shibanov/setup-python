@@ -104,6 +104,11 @@ export async function createSymlinks(
   await exec.exec(
     `ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
+  if (pypyBinaryPostfix) {
+    await exec.exec(
+      `ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pypyLocation}${binaryExtension}`
+    );
+  }
   await exec.exec(
     `ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`
   );

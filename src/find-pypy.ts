@@ -71,9 +71,9 @@ export async function findPyPyVersion(
 async function getExactPyPyVersion(installDir: string) {
   const pypyBinary = getPyPyBinaryPath(installDir);
   let versionOutput = '';
-
+  const pypyExecutables = path.join(pypyBinary, 'pypy');
   await exec.exec(
-    `${pypyBinary}/pypy -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`,
+    `${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`,
     [],
     {
       ignoreReturnCode: true,

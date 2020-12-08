@@ -1139,7 +1139,8 @@ function getExactPyPyVersion(installDir) {
     return __awaiter(this, void 0, void 0, function* () {
         const pypyBinary = getPyPyBinaryPath(installDir);
         let versionOutput = '';
-        yield exec.exec(`${pypyBinary}/pypy -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
+        const pypyExecutables = path.join(pypyBinary, 'pypy');
+        yield exec.exec(`${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
             ignoreReturnCode: true,
             silent: true,
             listeners: {
@@ -2786,6 +2787,9 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, 'pypy');
         yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
+        if (pypyBinaryPostfix) {
+            yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`);
+        }
         yield exec.exec(`ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         yield installPiP(pypyBinaryPath);
