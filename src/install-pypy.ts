@@ -5,7 +5,21 @@ import * as fs from 'fs';
 import * as semver from 'semver';
 
 const IS_WINDOWS = process.platform === 'win32';
-const IS_MACOS = process.platform === 'darwin';
+
+interface IPyPyDownload {
+  filename: string;
+  arch: string;
+  platform: string;
+  download_url: string;
+}
+
+interface IPyPylRelease {
+  pypy_version: string;
+  python_version: string;
+  stable: boolean;
+  latest_pypy: boolean;
+  files: IPyPyDownload[];
+}
 
 interface IPyPyDownloads {
   filename: string;
@@ -27,82 +41,89 @@ export async function installPyPy(
   pythonVersion: string,
   architecture: string
 ) {
-  let installDir;
+  let downloadDir;
 
   const releases = await getPyPyReleases();
-  const release = await findRelease(
+  const releaseData = await findRelease(
     releases,
     pythonVersion,
     pypyVersion,
     architecture
   );
 
-  let archiveName = release?.filename.replace(/.zip|.tar.bz2/g, '');
-  let downloadUrl = `${release?.download_url}`;
+  if (!releaseData || !releaseData.release) {
+    throw new Error(
+      `The specifyed release with pypy version ${pypyVersion} and python version ${pythonVersion} was not found`
+    );
+  }
 
-  core.info(`Download from "${downloadUrl}"`);
+  const {release, python_version, pypy_version} = releaseData;
+  let archiveName = release.filename.replace(/.zip|.tar.bz2/g, '');
+  let downloadUrl = `${release.download_url}`;
+
+  core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
+  core.info(`Download python ${python_version} and PyPy ${pypy_version}`);
   core.info('Extract downloaded archive');
 
   if (IS_WINDOWS) {
-    installDir = await tc.extractZip(pypyPath);
+    downloadDir = await tc.extractZip(pypyPath);
   } else {
-    installDir = await tc.extractTar(pypyPath, undefined, 'x');
+    downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
-  core.info(`install dir is ${installDir}`);
-  const toolDir = path.join(installDir, archiveName!);
-  const cacheDir = await tc.cacheDir(toolDir, 'PyPy', pythonVersion);
 
-  return cacheDir;
+  core.debug(`Extracted archives to ${downloadDir}`);
+
+  if (pypyVersion === 'nightly') {
+    let dirContent = fs.readdirSync(downloadDir);
+    let extractArchive = dirContent.filter(function (element) {
+      return element.match(/pypy-c*/gi);
+    });
+    archiveName = extractArchive[0];
+  }
+
+  core.debug(`Archive name is ${archiveName}`);
+
+  const toolDir = path.join(downloadDir, archiveName!);
+  const installDir = await tc.cacheDir(toolDir, 'PyPy', python_version);
+
+  return {installDir, python_version, pypy_version};
 }
 
 async function getPyPyReleases() {
-  const jsonContent = await tc.downloadTool(
+  const jsonPath = await tc.downloadTool(
     'https://downloads.python.org/pypy/versions.json'
   );
-  const releases: IPyPyToolRelease[] = JSON.parse(
-    fs.readFileSync(jsonContent).toString()
-  );
+  const jsonString = fs.readFileSync(jsonPath).toString();
+  const releases: IPyPylRelease[] = JSON.parse(jsonString);
 
   return releases;
 }
 
 function findRelease(
-  releases: IPyPyToolRelease[],
+  releases: IPyPylRelease[],
   pythonVersion: string,
   pypyVersion: string,
   architecture: string
 ) {
+  const nightlyBuild = pypyVersion === 'nightly' ? '.0' : '';
   const filterReleases = releases.filter(
     item =>
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion)
+      semver.satisfies(
+        `${item.python_version}${nightlyBuild}`,
+        pythonVersion
+      ) &&
+      (semver.satisfies(item.pypy_version, pypyVersion) ||
+        item.pypy_version === 'nightly')
   );
 
-  // should we sort it ?
-  const sortedReleases = filterReleases.sort((a, b) => {
-    let result = semver.compare(a.pypy_version, b.pypy_version);
-    if (result !== 0) {
-      return result;
-    } else {
-      return semver.compare(a.pypy_version, b.pypy_version);
-    }
-  });
+  const release = filterReleases[0].files.find(
+    item => item.arch === architecture && item.platform === process.platform
+  );
 
-  if (IS_WINDOWS) {
-    architecture = 'x86';
-  }
-
-  for (let item of sortedReleases) {
-    if (
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion)
-    ) {
-      return item.files.find(
-        item => item.arch === architecture && item.platform === process.platform
-      );
-    }
-  }
-
-  return null;
+  return {
+    release,
+    python_version: filterReleases[0].python_version,
+    pypy_version: filterReleases[0].pypy_version
+  };
 }
