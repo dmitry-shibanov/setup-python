@@ -8,7 +8,7 @@ async function run() {
   try {
     let version = core.getInput('python-version');
     const arch: string = core.getInput('architecture') || os.arch();
-    if (version) {
+    if (version.includes('-')) {
       const installed = await finderPyPy.findPyPyVersion(version, arch);
       core.info(
         `Successfully setup PyPy ${installed.pypy_version} with Python (${installed.python_version})`
