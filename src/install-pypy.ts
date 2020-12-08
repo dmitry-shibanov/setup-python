@@ -91,10 +91,7 @@ function findRelease(
   const filterReleases = releases.filter(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion) &&
-      !!item.files.find(
-        file => file.arch === architecture && file.platform === process.platform
-      )
+      semver.satisfies(item.pypy_version, pypyVersion)
   );
 
   if (filterReleases.length === 0) {
