@@ -72,13 +72,12 @@ async function getAvailablePyPyVersions() {
   const http: httpm.HttpClient = new httpm.HttpClient('tool-cache');
   const headers = {};
 
-  const response = await http.getJson<any>(url, headers); // fix type from any
+  const response = await http.getJson<IPyPyManifestRelease[]>(url, headers); // fix type from any
   if (!response.result) {
     throw new Error('no data was found');
   }
-  const jsonString = JSON.stringify(response.result);
-  core.debug(jsonString);
-  const releases: IPyPyManifestRelease[] = JSON.parse(jsonString);
+
+  const releases: IPyPyManifestRelease[] = response.result;
 
   return releases;
 }

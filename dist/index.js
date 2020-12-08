@@ -2781,9 +2781,7 @@ function getAvailablePyPyVersions() {
         if (!response.result) {
             throw new Error('no data was found');
         }
-        const jsonString = JSON.stringify(response.result);
-        core.debug(jsonString);
-        const releases = JSON.parse(jsonString);
+        const releases = response.result;
         return releases;
     });
 }
