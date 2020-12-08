@@ -21,21 +21,6 @@ interface IPyPylRelease {
   files: IPyPyDownload[];
 }
 
-interface IPyPyDownloads {
-  filename: string;
-  arch: string;
-  platform: string;
-  download_url: string;
-}
-
-interface IPyPyToolRelease {
-  pypy_version: string;
-  python_version: string;
-  stable: boolean;
-  latest_pypy: boolean;
-  files: IPyPyDownloads[];
-}
-
 export async function installPyPy(
   pypyVersion: string,
   pythonVersion: string,
@@ -73,15 +58,6 @@ export async function installPyPy(
   }
 
   core.debug(`Extracted archives to ${downloadDir}`);
-
-  if (pypyVersion === 'nightly') {
-    let dirContent = fs.readdirSync(downloadDir);
-    let extractArchive = dirContent.filter(function (element) {
-      return element.match(/pypy-c*/gi);
-    });
-    archiveName = extractArchive[0];
-  }
-
   core.debug(`Archive name is ${archiveName}`);
 
   const toolDir = path.join(downloadDir, archiveName!);
@@ -106,15 +82,10 @@ function findRelease(
   pypyVersion: string,
   architecture: string
 ) {
-  const nightlyBuild = pypyVersion === 'nightly' ? '.0' : '';
   const filterReleases = releases.filter(
     item =>
-      semver.satisfies(
-        `${item.python_version}${nightlyBuild}`,
-        pythonVersion
-      ) &&
-      (semver.satisfies(item.pypy_version, pypyVersion) ||
-        item.pypy_version === 'nightly')
+      semver.satisfies(item.python_version, pythonVersion) &&
+      semver.satisfies(item.pypy_version, pypyVersion)
   );
 
   const release = filterReleases[0].files.find(

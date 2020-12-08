@@ -1113,9 +1113,6 @@ function findPyPyVersion(versionSpec, architecture) {
             architecture = 'x86';
         }
         let installDir = tc.find('PyPy', pypyVersionSpec.pythonVersion, architecture);
-        if (pypyVersionSpec.pypyVersion === 'nightly') {
-            installDir = null;
-        }
         if (installDir) {
             pypy_version = yield getCurrentPyPyVersion(installDir, pypyVersionSpec.pythonVersion);
             const shouldReInstall = isPyPyVersionSatisfies(pypy_version, pypyVersionSpec.pypyVersion);
@@ -2796,13 +2793,6 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
         core.debug(`Extracted archives to ${downloadDir}`);
-        if (pypyVersion === 'nightly') {
-            let dirContent = fs.readdirSync(downloadDir);
-            let extractArchive = dirContent.filter(function (element) {
-                return element.match(/pypy-c*/gi);
-            });
-            archiveName = extractArchive[0];
-        }
         core.debug(`Archive name is ${archiveName}`);
         const toolDir = path.join(downloadDir, archiveName);
         const installDir = yield tc.cacheDir(toolDir, 'PyPy', python_version);
@@ -2819,10 +2809,8 @@ function getPyPyReleases() {
     });
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    const nightlyBuild = pypyVersion === 'nightly' ? '.0' : '';
-    const filterReleases = releases.filter(item => semver.satisfies(`${item.python_version}${nightlyBuild}`, pythonVersion) &&
-        (semver.satisfies(item.pypy_version, pypyVersion) ||
-            item.pypy_version === 'nightly'));
+    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
+        semver.satisfies(item.pypy_version, pypyVersion));
     const release = filterReleases[0].files.find(item => item.arch === architecture && item.platform === process.platform);
     return {
         release,

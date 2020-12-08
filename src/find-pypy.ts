@@ -38,10 +38,6 @@ export async function findPyPyVersion(
     architecture
   );
 
-  if (pypyVersionSpec.pypyVersion === 'nightly') {
-    installDir = null;
-  }
-
   if (installDir) {
     pypy_version = await getCurrentPyPyVersion(
       installDir,
