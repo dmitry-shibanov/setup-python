@@ -1121,7 +1121,7 @@ function findPyPyVersion(versionSpec, architecture) {
             }
         }
         if (!installDir) {
-            ({ installDir, python_version, pypy_version } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pypyVersion, architecture));
+            ({ installDir, python_version, pypy_version } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield createSymlinks(installDir, python_version);
         }
         addEnvVariables(installDir);
@@ -2787,7 +2787,8 @@ function getAvailablePyPyVersions() {
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-        semver.satisfies(item.pypy_version, pypyVersion));
+        semver.satisfies(item.pypy_version, pypyVersion) &&
+        !!item.files.find(file => file.arch === architecture && file.platform === process.platform));
     if (filterReleases.length === 0) {
         throw new Error('no releases were found');
     }

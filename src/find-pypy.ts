@@ -53,7 +53,7 @@ export async function findPyPyVersion(
   if (!installDir) {
     ({installDir, python_version, pypy_version} = await pypyInstall.installPyPy(
       pypyVersionSpec.pypyVersion,
-      pypyVersionSpec.pypyVersion,
+      pypyVersionSpec.pythonVersion,
       architecture
     ));
 
