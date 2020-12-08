@@ -2782,6 +2782,7 @@ function getAvailablePyPyVersions() {
             throw new Error('no data was found');
         }
         const jsonString = JSON.stringify(response.result);
+        core.debug(jsonString);
         const releases = JSON.parse(jsonString);
         return releases;
     });
@@ -2790,7 +2791,7 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(item.pypy_version, pypyVersion) &&
         !!item.files.find(file => file.arch === architecture && file.platform === process.platform));
-    if (filterReleases.length < 0) {
+    if (filterReleases.length === 0) {
         throw new Error('no releases were found');
     }
     const sortedReleases = filterReleases.sort((previous, current) => {

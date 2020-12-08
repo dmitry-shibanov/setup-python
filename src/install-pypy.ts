@@ -77,6 +77,7 @@ async function getAvailablePyPyVersions() {
     throw new Error('no data was found');
   }
   const jsonString = JSON.stringify(response.result);
+  core.debug(jsonString);
   const releases: IPyPyManifestRelease[] = JSON.parse(jsonString);
 
   return releases;
@@ -97,7 +98,7 @@ function findRelease(
       )
   );
 
-  if (filterReleases.length < 0) {
+  if (filterReleases.length === 0) {
     throw new Error('no releases were found');
   }
 
