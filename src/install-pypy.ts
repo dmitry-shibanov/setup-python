@@ -6,19 +6,19 @@ import * as semver from 'semver';
 
 const IS_WINDOWS = process.platform === 'win32';
 
-interface IPyPyDownloads {
+interface IPyPyDownload {
   filename: string;
   arch: string;
   platform: string;
   download_url: string;
 }
 
-interface IPyPyToolRelease {
+interface IPyPylRelease {
   pypy_version: string;
   python_version: string;
   stable: boolean;
   latest_pypy: boolean;
-  files: IPyPyDownloads[];
+  files: IPyPyDownload[];
 }
 
 export async function installPyPy(
@@ -46,10 +46,10 @@ export async function installPyPy(
   let archiveName = release.filename.replace(/.zip|.tar.bz2/g, '');
   let downloadUrl = `${release.download_url}`;
 
-  core.info(`Download from "${downloadUrl}"`);
+  core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
-  core.info('Extract downloaded archive');
   core.info(`Download python ${python_version} and PyPy ${pypy_version}`);
+  core.info('Extract downloaded archive');
 
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
@@ -57,13 +57,17 @@ export async function installPyPy(
     downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
 
+  core.debug(`Extracted archives to ${downloadDir}`);
+
   if (pypyVersion === 'nightly') {
-    let dirCont = fs.readdirSync(downloadDir);
-    let files = dirCont.filter(function (elm) {
-      return elm.match(/pypy-c*/gi);
+    let dirContent = fs.readdirSync(downloadDir);
+    let extractArchive = dirContent.filter(function (element) {
+      return element.match(/pypy-c*/gi);
     });
-    archiveName = files[0];
+    archiveName = extractArchive[0];
   }
+
+  core.debug(`Archive name is ${archiveName}`);
 
   const toolDir = path.join(downloadDir, archiveName!);
   const installDir = await tc.cacheDir(toolDir, 'PyPy', python_version);
@@ -72,26 +76,28 @@ export async function installPyPy(
 }
 
 async function getPyPyReleases() {
-  const jsonContent = await tc.downloadTool(
+  const jsonPath = await tc.downloadTool(
     'https://downloads.python.org/pypy/versions.json'
   );
-  const releases: IPyPyToolRelease[] = JSON.parse(
-    fs.readFileSync(jsonContent).toString()
-  );
+  const jsonString = fs.readFileSync(jsonPath).toString();
+  const releases: IPyPylRelease[] = JSON.parse(jsonString);
 
   return releases;
 }
 
 function findRelease(
-  releases: IPyPyToolRelease[],
+  releases: IPyPylRelease[],
   pythonVersion: string,
   pypyVersion: string,
   architecture: string
 ) {
-  const nightly = pypyVersion === 'nightly' ? '.0' : '';
+  const nightlyBuild = pypyVersion === 'nightly' ? '.0' : '';
   const filterReleases = releases.filter(
     item =>
-      semver.satisfies(`${item.python_version}${nightly}`, pythonVersion) &&
+      semver.satisfies(
+        `${item.python_version}${nightlyBuild}`,
+        pythonVersion
+      ) &&
       (semver.satisfies(item.pypy_version, pypyVersion) ||
         item.pypy_version === 'nightly')
   );
