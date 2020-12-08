@@ -1122,7 +1122,7 @@ function findPyPyVersion(versionSpec, architecture) {
         }
         if (!installDir) {
             ({ installDir, python_version, pypy_version } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
-            yield createSymlinks(installDir, python_version);
+            yield pypyInstall.createSymlinks(getPyPyBinary(installDir), python_version);
         }
         addEnvVariables(installDir);
         return { pypy_version, python_version };
@@ -1157,25 +1157,6 @@ function addEnvVariables(installDir) {
     const pythonLocation = getPyPyBinary(installDir);
     core.exportVariable('pythonLocation', pythonLocation);
     core.addPath(pythonLocation);
-}
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-// input-pypy.ts
-function createSymlinks(installDir, pythonVersion) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const pythonLocation = getPyPyBinary(installDir);
-        const version = semver.coerce(pythonVersion);
-        const majorVersion = semver.major(version);
-        const major = majorVersion === 2 ? '' : '3';
-        let binaryExtension = IS_WINDOWS ? '.exe' : '';
-        yield exec.exec(`ln -sfn ${pythonLocation}/pypy${major}${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`);
-        yield exec.exec(`ln -sfn ${pythonLocation}/python${majorVersion}${binaryExtension} ${pythonLocation}/python${binaryExtension}`);
-        yield exec.exec(`chmod +x ${pythonLocation}/python${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`);
-        yield exec.exec(`${pythonLocation}/python -m ensurepip`);
-        yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
-    });
 }
 /** Get PyPy binary location from the tool of installation directory
  *  - On Linux and macOS, the Python interpreter is in 'bin'.
@@ -2742,6 +2723,7 @@ const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
 const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
+const exec = __importStar(__webpack_require__(986));
 const IS_WINDOWS = process.platform === 'win32';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -2785,6 +2767,25 @@ function getAvailablePyPyVersions() {
         return releases;
     });
 }
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+// input-pypy.ts
+function createSymlinks(pythonLocation, pythonVersion) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const version = semver.coerce(pythonVersion);
+        const majorVersion = semver.major(version);
+        const major = majorVersion === 2 ? '' : '3';
+        let binaryExtension = IS_WINDOWS ? '.exe' : '';
+        yield exec.exec(`ln -sfn ${pythonLocation}/pypy${major}${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`);
+        yield exec.exec(`ln -sfn ${pythonLocation}/python${majorVersion}${binaryExtension} ${pythonLocation}/python${binaryExtension}`);
+        yield exec.exec(`chmod +x ${pythonLocation}/python${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`);
+        yield exec.exec(`${pythonLocation}/python -m ensurepip`);
+        yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
+    });
+}
+exports.createSymlinks = createSymlinks;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(item.pypy_version, pypyVersion) &&

@@ -4,6 +4,7 @@ import * as tc from '@actions/tool-cache';
 import * as fs from 'fs';
 import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
+import * as exec from '@actions/exec';
 
 const IS_WINDOWS = process.platform === 'win32';
 
@@ -80,6 +81,36 @@ async function getAvailablePyPyVersions() {
   const releases: IPyPyManifestRelease[] = response.result;
 
   return releases;
+}
+
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+// input-pypy.ts
+export async function createSymlinks(
+  pythonLocation: string,
+  pythonVersion: string
+) {
+  const version = semver.coerce(pythonVersion)!;
+  const majorVersion = semver.major(version);
+  const major = majorVersion === 2 ? '' : '3';
+
+  let binaryExtension = IS_WINDOWS ? '.exe' : '';
+
+  await exec.exec(
+    `ln -sfn ${pythonLocation}/pypy${major}${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
+  );
+  await exec.exec(
+    `ln -sfn ${pythonLocation}/python${majorVersion}${binaryExtension} ${pythonLocation}/python${binaryExtension}`
+  );
+  await exec.exec(
+    `chmod +x ${pythonLocation}/python${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
+  );
+  await exec.exec(`${pythonLocation}/python -m ensurepip`);
+  await exec.exec(
+    `${pythonLocation}/python -m pip install --ignore-installed pip`
+  );
 }
 
 function findRelease(

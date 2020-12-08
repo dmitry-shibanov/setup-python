@@ -57,7 +57,7 @@ export async function findPyPyVersion(
       architecture
     ));
 
-    await createSymlinks(installDir, python_version);
+    await pypyInstall.createSymlinks(getPyPyBinary(installDir), python_version);
   }
 
   addEnvVariables(installDir);
@@ -103,34 +103,6 @@ function addEnvVariables(installDir: string) {
   const pythonLocation = getPyPyBinary(installDir);
   core.exportVariable('pythonLocation', pythonLocation);
   core.addPath(pythonLocation);
-}
-
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-// input-pypy.ts
-async function createSymlinks(installDir: string, pythonVersion: string) {
-  const pythonLocation = getPyPyBinary(installDir);
-  const version = semver.coerce(pythonVersion)!;
-  const majorVersion = semver.major(version);
-  const major = majorVersion === 2 ? '' : '3';
-
-  let binaryExtension = IS_WINDOWS ? '.exe' : '';
-
-  await exec.exec(
-    `ln -sfn ${pythonLocation}/pypy${major}${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
-  );
-  await exec.exec(
-    `ln -sfn ${pythonLocation}/python${majorVersion}${binaryExtension} ${pythonLocation}/python${binaryExtension}`
-  );
-  await exec.exec(
-    `chmod +x ${pythonLocation}/python${binaryExtension} ${pythonLocation}/python${majorVersion}${binaryExtension}`
-  );
-  await exec.exec(`${pythonLocation}/python -m ensurepip`);
-  await exec.exec(
-    `${pythonLocation}/python -m pip install --ignore-installed pip`
-  );
 }
 
 /** Get PyPy binary location from the tool of installation directory
