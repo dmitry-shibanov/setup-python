@@ -1112,8 +1112,7 @@ function findPyPyVersion(versionSpec, architecture) {
         if (IS_WINDOWS) {
             architecture = 'x86';
         }
-        const findPyPy = tc.find.bind(undefined, 'PyPy', pypyVersionSpec.pythonVersion);
-        let installDir = findPyPy(architecture);
+        let installDir = tc.find('PyPy', pypyVersionSpec.pythonVersion, architecture);
         if (pypyVersionSpec.pypyVersion === 'nightly') {
             installDir = null;
         }

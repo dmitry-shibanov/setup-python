@@ -25,17 +25,17 @@ export async function findPyPyVersion(
   architecture: string
 ): Promise<InstalledVersion> {
   let pypy_version: string;
-  let python_version;
+  let python_version: string;
   const pypyVersionSpec = prepareVersions(versionSpec);
   if (IS_WINDOWS) {
     architecture = 'x86';
   }
-  const findPyPy = tc.find.bind(
-    undefined,
+
+  let installDir: string | null = tc.find(
     'PyPy',
-    pypyVersionSpec.pythonVersion
+    pypyVersionSpec.pythonVersion,
+    architecture
   );
-  let installDir: string | null = findPyPy(architecture);
 
   if (pypyVersionSpec.pypyVersion === 'nightly') {
     installDir = null;
