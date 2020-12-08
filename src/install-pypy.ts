@@ -69,8 +69,6 @@ export async function installPyPy(
 
 async function getAvailablePyPyVersions() {
   const url = 'https://downloads.python.org/pypy/versions.json';
-  const jsonPath = await tc.downloadTool(url);
-
   const http: httpm.HttpClient = new httpm.HttpClient('tool-cache');
   const headers = {};
 
@@ -78,8 +76,8 @@ async function getAvailablePyPyVersions() {
   if (!response.result) {
     throw new Error('no data was found');
   }
-
-  const releases: IPyPyManifestRelease[] = JSON.parse(response.result);
+  const jsonString = JSON.stringify(response.result);
+  const releases: IPyPyManifestRelease[] = JSON.parse(jsonString);
 
   return releases;
 }

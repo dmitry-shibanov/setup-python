@@ -1142,7 +1142,7 @@ function getExactPyPyVersion(installDir) {
             }
         });
         core.debug(`PyPy Python version output is ${versionOutput}`);
-        if (versionOutput) {
+        if (!versionOutput) {
             core.debug('Error from pypy --version call is empty');
             return '';
         }
@@ -2775,14 +2775,14 @@ exports.installPyPy = installPyPy;
 function getAvailablePyPyVersions() {
     return __awaiter(this, void 0, void 0, function* () {
         const url = 'https://downloads.python.org/pypy/versions.json';
-        const jsonPath = yield tc.downloadTool(url);
         const http = new httpm.HttpClient('tool-cache');
         const headers = {};
         const response = yield http.getJson(url, headers); // fix type from any
         if (!response.result) {
             throw new Error('no data was found');
         }
-        const releases = JSON.parse(response.result);
+        const jsonString = JSON.stringify(response.result);
+        const releases = JSON.parse(jsonString);
         return releases;
     });
 }

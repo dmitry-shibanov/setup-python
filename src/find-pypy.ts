@@ -83,7 +83,7 @@ async function getExactPyPyVersion(installDir: string) {
 
   core.debug(`PyPy Python version output is ${versionOutput}`);
 
-  if (versionOutput) {
+  if (!versionOutput) {
     core.debug('Error from pypy --version call is empty');
     return '';
   }
