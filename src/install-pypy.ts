@@ -7,6 +7,7 @@ import * as exec from '@actions/exec';
 import * as fs from 'fs';
 
 const IS_WINDOWS = process.platform === 'win32';
+const PYPY_VERSION = 'PYPY_VERSION';
 
 interface IPyPyManifestAsset {
   filename: string;
@@ -50,9 +51,6 @@ export async function installPyPy(
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
-  core.info(
-    `Download python ${resolvedPythonVersion} and PyPy ${resolvedPyPyVersion}`
-  );
   core.info('Extract downloaded archive');
 
   // TO-DO: double check logs
@@ -62,8 +60,7 @@ export async function installPyPy(
     downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
 
-  core.debug(`Extracted archives to ${downloadDir}`);
-
+  core.info('Execute installation script');
   const toolDir = path.join(downloadDir, archiveName!);
   const installDir = await tc.cacheDir(
     toolDir,
@@ -71,6 +68,9 @@ export async function installPyPy(
     resolvedPythonVersion,
     architecture
   );
+
+  const pypyFilePath = path.join(installDir, PYPY_VERSION);
+  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
@@ -89,14 +89,19 @@ async function getAvailablePyPyVersions() {
   return response.result;
 }
 
-function isFileExists(filePath: string) {
-  return fs.existsSync(filePath);
-}
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
  */
 // input-pypy.ts
+
+function createSymlink(sourcePath: string, targetPath: string) {
+  if (fs.existsSync(targetPath)) {
+    return;
+  }
+  fs.symlinkSync(sourcePath, targetPath);
+}
+
 export async function createSymlinks(
   pypyBinaryPath: string,
   pythonVersion: string
@@ -108,29 +113,27 @@ export async function createSymlinks(
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
   const pythonLocation = path.join(pypyBinaryPath, 'python');
   const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-  isFileExists(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`) ||
-    fs.symlinkSync(
-      `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
-      `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
-    );
-  isFileExists(`${pypyLocation}${binaryExtension}`) ||
-    fs.symlinkSync(
-      `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
-      `${pypyLocation}${binaryExtension}`
-    );
-  isFileExists(`${pythonLocation}${binaryExtension}`) ||
-    fs.symlinkSync(
-      `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`,
-      `${pythonLocation}${binaryExtension}`
-    );
+
+  createSymlink(
+    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
+    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}` // python3 or python
+  );
+  // To-Do
+  createSymlink(
+    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
+    `${pypyLocation}${binaryExtension}` // pypy
+  );
+  createSymlink(
+    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, // python3 or python
+    `${pythonLocation}${binaryExtension}` // python
+  );
+
   await exec.exec(
     `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
-
-  await installPiP(pypyBinaryPath);
 }
 
-async function installPiP(pythonLocation: string) {
+export async function installPip(pythonLocation: string) {
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`

@@ -35,5 +35,13 @@ jobs:
       with:
         python-version: ${{ matrix.pypy }}
 
+    - name: PyPy and Python version
+      run: python --version
+
     - name: Run simple code
       run: python -c 'import math; print(math.factorial(5))'
+
+    - name: Run simple code with pip package
+      run: | 
+        pip install arrow
+        python -c "import arrow; a = arrow.get('2013-05-11T21:23:58.970460+07:00'); print(a)"

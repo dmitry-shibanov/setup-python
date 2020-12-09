@@ -1099,7 +1099,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(__webpack_require__(622));
 const pypyInstall = __importStar(__webpack_require__(369));
 const fs = __importStar(__webpack_require__(747));
-const exec = __importStar(__webpack_require__(986));
 const semver = __importStar(__webpack_require__(876));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
@@ -1110,17 +1109,17 @@ function findPyPyVersion(versionSpec, architecture) {
         let resolvedPythonVersion = '';
         let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
+        // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
+        // On our Windows virtual environments, we only install an x86 version.
+        // Fall back to x86.
         if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
         }
-        ({ installDir, resolvedPythonVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, architecture));
-        if (installDir) {
-            resolvedPyPyVersion = yield getExactPyPyVersion(installDir, resolvedPythonVersion);
-            const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersionSpec.pypyVersion);
-            if (!isPyPyVersionSatisfies) {
-                installDir = null;
-            }
-        }
+        ({
+            installDir,
+            resolvedPythonVersion,
+            resolvedPyPyVersion
+        } = yield findPyPyToolCache(pypyVersionSpec.pythonVersion, pypyVersionSpec.pypyVersion, architecture));
         if (!installDir) {
             ({
                 installDir,
@@ -1128,63 +1127,61 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
-            const pypyFilePath = path.join(installDir, 'pypy_version');
-            fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+            yield pypyInstall.installPip(getPyPyBinaryPath(installDir));
         }
+        const _binDir = path.join(installDir, 'bin');
         const pythonLocation = getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
         core.addPath(pythonLocation);
-        if (IS_WINDOWS) {
-            const _binDir = path.join(installDir, 'bin');
-            core.addPath(_binDir);
-        }
+        core.addPath(_binDir);
         return { resolvedPyPyVersion, resolvedPythonVersion };
     });
 }
 exports.findPyPyVersion = findPyPyVersion;
-function findPyPyToolCache(pythonVersion, architecture) {
-    const allVersions = tc.findAllVersions('PyPy', architecture);
-    core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
-    const version = semver.maxSatisfying(allVersions, pythonVersion);
-    if (!version) {
-        return { installDir: null, resolvedPythonVersion: '' };
-    }
-    core.debug(`maxSatisfying version is ${version}`);
-    const installDir = tc.find('PyPy', version, architecture);
-    core.info(`Found PyPy installDir from version file is ${installDir}`);
-    return { installDir, resolvedPythonVersion: version };
-}
-function getExactPyPyVersionFromFile(installDir) {
-    let pypyVersion = '';
-    let fileVersion = path.join(installDir, 'pypy_version');
-    if (fs.existsSync(fileVersion)) {
-        pypyVersion = fs.readFileSync(fileVersion).toString();
-        core.info(`Version from pypy_version file is ${pypyVersion}`);
-    }
-    return pypyVersion;
-}
-function getExactPyPyVersion(installDir, pythonVersion) {
+function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        const pypyBinary = getPyPyBinaryPath(installDir);
-        let versionOutput = getExactPyPyVersionFromFile(installDir);
-        if (!versionOutput) {
-            const major = semver.major(pythonVersion) === 3 ? '3' : '';
-            const pypyExecutables = path.join(pypyBinary, `pypy${major}`);
-            yield exec.exec(`${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
-                ignoreReturnCode: true,
-                silent: true,
-                listeners: {
-                    stdout: (data) => (versionOutput = data.toString())
-                }
-            });
-            core.debug(`PyPy version output is ${versionOutput}`);
-            if (!versionOutput) {
-                core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
-                return '';
+        let resolvedPyPyVersion = '';
+        const allVersions = tc.findAllVersions('PyPy', architecture);
+        const filterVersions = allVersions.filter(item => {
+            let toolcachePyPy = tc.find('PyPy', item, architecture);
+            if (!toolcachePyPy) {
+                return false;
+            }
+            // To-Do
+            // pypy-3.x-v7.3.x
+            // 7.3.2 python 3.7
+            // 7.3.3 python 3.6
+            // should we do the same for our sort
+            let pypyVer = getExactPyPyVersion(toolcachePyPy);
+            return semver.satisfies(pypyVer, pypyVersion);
+        });
+        core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
+        let resolvedPythonVersion = (_a = semver.maxSatisfying(filterVersions, pythonVersion)) !== null && _a !== void 0 ? _a : '';
+        if (!resolvedPythonVersion) {
+            return { installDir: null, resolvedPythonVersion: '', resolvedPyPyVersion };
+        }
+        core.debug(`maxSatisfying version is ${resolvedPythonVersion}`);
+        let installDir = tc.find('PyPy', resolvedPythonVersion, architecture);
+        if (installDir) {
+            core.info(`Found PyPy installDir from version file is ${installDir}`);
+            resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
+            const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
+            if (!isPyPyVersionSatisfies) {
+                installDir = null;
             }
         }
-        return versionOutput;
+        return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
     });
+}
+function getExactPyPyVersion(installDir) {
+    let pypyVersion = '';
+    let fileVersion = path.join(installDir, 'PYPY_VERSION');
+    if (fs.existsSync(fileVersion)) {
+        pypyVersion = fs.readFileSync(fileVersion).toString();
+        core.info(`Version from PYPY_VERSION file is ${pypyVersion}`);
+    }
+    return pypyVersion;
 }
 /** Get PyPy binary location from the tool of installation directory
  *  - On Linux and macOS, the Python interpreter is in 'bin'.
@@ -1200,16 +1197,15 @@ function parsePyPyVersion(versionSpec) {
     // pypy-3.7
     // pypy-3.7-vx
     // TO-DO: should we print beatiful error message if versions parts are not semver or just throw exception
-    if (versions.length === 0) {
+    if (versions.length < 2) {
         throw new Error('Please specify valid version Specification for PyPy.');
     }
     const pythonVersion = new semver.Range(versions[1]);
     const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
-    const data = {
+    return {
         pypyVersion: pypyVersion,
         pythonVersion: pythonVersion
     };
-    return data;
 }
 
 
@@ -2763,6 +2759,7 @@ const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
 const IS_WINDOWS = process.platform === 'win32';
+const PYPY_VERSION = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let downloadDir;
@@ -2776,7 +2773,6 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         let downloadUrl = `${foundAsset.download_url}`;
         core.info(`Download PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
-        core.info(`Download python ${resolvedPythonVersion} and PyPy ${resolvedPyPyVersion}`);
         core.info('Extract downloaded archive');
         // TO-DO: double check logs
         if (IS_WINDOWS) {
@@ -2785,9 +2781,11 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         else {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
-        core.debug(`Extracted archives to ${downloadDir}`);
+        core.info('Execute installation script');
         const toolDir = path.join(downloadDir, archiveName);
         const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
+        const pypyFilePath = path.join(installDir, PYPY_VERSION);
+        fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
     });
 }
@@ -2803,14 +2801,17 @@ function getAvailablePyPyVersions() {
         return response.result;
     });
 }
-function isFileExists(filePath) {
-    return fs.existsSync(filePath);
-}
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
  */
 // input-pypy.ts
+function createSymlink(sourcePath, targetPath) {
+    if (fs.existsSync(targetPath)) {
+        return;
+    }
+    fs.symlinkSync(sourcePath, targetPath);
+}
 function createSymlinks(pypyBinaryPath, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const version = semver.coerce(pythonVersion);
@@ -2819,18 +2820,21 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         let binaryExtension = IS_WINDOWS ? '.exe' : '';
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-        isFileExists(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`) ||
-            fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
-        isFileExists(`${pypyLocation}${binaryExtension}`) ||
-            fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pypyLocation}${binaryExtension}`);
-        isFileExists(`${pythonLocation}${binaryExtension}`) ||
-            fs.symlinkSync(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, `${pythonLocation}${binaryExtension}`);
+        createSymlink(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
+        `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}` // python3 or python
+        );
+        // To-Do
+        createSymlink(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
+        `${pypyLocation}${binaryExtension}` // pypy
+        );
+        createSymlink(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, // python3 or python
+        `${pythonLocation}${binaryExtension}` // python
+        );
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
-        yield installPiP(pypyBinaryPath);
     });
 }
 exports.createSymlinks = createSymlinks;
-function installPiP(pythonLocation) {
+function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
         yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
@@ -2841,6 +2845,7 @@ function installPiP(pythonLocation) {
         }
     });
 }
+exports.installPip = installPip;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(item.pypy_version, pypyVersion) &&
