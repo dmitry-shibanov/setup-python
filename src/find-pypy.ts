@@ -20,20 +20,17 @@ export async function findPyPyVersion(
 ): Promise<{resolvedPyPyVersion: string; resolvedPythonVersion: string}> {
   let resolvedPyPyVersion = '';
   let resolvedPythonVersion = '';
-  // TO-DO
+  let installDir: string | null;
 
-  // findAllversions from toolcache
   const pypyVersionSpec = parsePyPyVersion(versionSpec);
-  if (IS_WINDOWS) {
-    // TO-DO think about architecture
+  if (IS_WINDOWS && architecture === 'x64') {
     architecture = 'x86';
   }
 
-  let installDir: string | null = tc.find(
-    'PyPy',
-    pypyVersionSpec.pythonVersion.raw,
+  ({installDir, resolvedPythonVersion} = findPyPyToolCache(
+    pypyVersionSpec.pythonVersion,
     architecture
-  );
+  ));
 
   if (installDir) {
     resolvedPyPyVersion = await getExactPyPyVersion(installDir);
@@ -77,27 +74,51 @@ export async function findPyPyVersion(
   return {resolvedPyPyVersion, resolvedPythonVersion};
 }
 
+function findPyPyToolCache(pythonVersion: semver.Range, architecture: string) {
+  const allVersions = tc.findAllVersions('PyPy');
+  const version = semver.maxSatisfying(allVersions, pythonVersion);
+
+  if (!version) {
+    return {installDir: null, resolvedPythonVersion: ''};
+  }
+
+  const installDir = tc.find('PyPy', version, architecture);
+  return {installDir, resolvedPythonVersion: version};
+}
+
+function getExactPyPyVersionFromFile(installDir: string) {
+  let pypyVersion = '';
+  let fileVersion = path.join(installDir, 'pypy_version');
+  if (fs.existsSync(fileVersion)) {
+    pypyVersion = fs.readFileSync(fileVersion).toString();
+  }
+
+  return pypyVersion;
+}
+
 async function getExactPyPyVersion(installDir: string) {
   const pypyBinary = getPyPyBinaryPath(installDir);
-  let versionOutput = '';
-  const pypyExecutables = path.join(pypyBinary, 'pypy');
-  await exec.exec(
-    `${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`,
-    [],
-    {
-      ignoreReturnCode: true,
-      silent: true,
-      listeners: {
-        stdout: (data: Buffer) => (versionOutput = data.toString())
-      }
-    }
-  );
-
-  core.debug(`PyPy version output is ${versionOutput}`);
-
+  let versionOutput = getExactPyPyVersionFromFile(installDir);
   if (!versionOutput) {
-    core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
-    return '';
+    const pypyExecutables = path.join(pypyBinary, 'pypy');
+    await exec.exec(
+      `${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`,
+      [],
+      {
+        ignoreReturnCode: true,
+        silent: true,
+        listeners: {
+          stdout: (data: Buffer) => (versionOutput = data.toString())
+        }
+      }
+    );
+
+    core.debug(`PyPy version output is ${versionOutput}`);
+
+    if (!versionOutput) {
+      core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
+      return '';
+    }
   }
 
   return versionOutput;

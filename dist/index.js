@@ -1108,14 +1108,12 @@ function findPyPyVersion(versionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let resolvedPyPyVersion = '';
         let resolvedPythonVersion = '';
-        // TO-DO
-        // findAllversions from toolcache
+        let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
-        if (IS_WINDOWS) {
-            // TO-DO think about architecture
+        if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
         }
-        let installDir = tc.find('PyPy', pypyVersionSpec.pythonVersion.raw, architecture);
+        ({ installDir, resolvedPythonVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, architecture));
         if (installDir) {
             resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
             const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersionSpec.pypyVersion);
@@ -1143,22 +1141,41 @@ function findPyPyVersion(versionSpec, architecture) {
     });
 }
 exports.findPyPyVersion = findPyPyVersion;
+function findPyPyToolCache(pythonVersion, architecture) {
+    const allVersions = tc.findAllVersions('PyPy');
+    const version = semver.maxSatisfying(allVersions, pythonVersion);
+    if (!version) {
+        return { installDir: null, resolvedPythonVersion: '' };
+    }
+    const installDir = tc.find('PyPy', version, architecture);
+    return { installDir, resolvedPythonVersion: version };
+}
+function getExactPyPyVersionFromFile(installDir) {
+    let pypyVersion = '';
+    let fileVersion = path.join(installDir, 'pypy_version');
+    if (fs.existsSync(fileVersion)) {
+        pypyVersion = fs.readFileSync(fileVersion).toString();
+    }
+    return pypyVersion;
+}
 function getExactPyPyVersion(installDir) {
     return __awaiter(this, void 0, void 0, function* () {
         const pypyBinary = getPyPyBinaryPath(installDir);
-        let versionOutput = '';
-        const pypyExecutables = path.join(pypyBinary, 'pypy');
-        yield exec.exec(`${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
-            ignoreReturnCode: true,
-            silent: true,
-            listeners: {
-                stdout: (data) => (versionOutput = data.toString())
-            }
-        });
-        core.debug(`PyPy version output is ${versionOutput}`);
+        let versionOutput = getExactPyPyVersionFromFile(installDir);
         if (!versionOutput) {
-            core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
-            return '';
+            const pypyExecutables = path.join(pypyBinary, 'pypy');
+            yield exec.exec(`${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
+                ignoreReturnCode: true,
+                silent: true,
+                listeners: {
+                    stdout: (data) => (versionOutput = data.toString())
+                }
+            });
+            core.debug(`PyPy version output is ${versionOutput}`);
+            if (!versionOutput) {
+                core.debug(`Enable to retrieve PyPy version from '${pypyBinary}/pypy'`); // polish error message
+                return '';
+            }
         }
         return versionOutput;
     });
@@ -2738,6 +2755,7 @@ const tc = __importStar(__webpack_require__(533));
 const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
+const fs = __importStar(__webpack_require__(747));
 const IS_WINDOWS = process.platform === 'win32';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -2791,14 +2809,13 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         const pythonBinaryPostfix = semver.major(version);
         const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
         let binaryExtension = IS_WINDOWS ? '.exe' : '';
-        // TO-DO: revisit necessary of symlinks
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-        yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
+        fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         if (pypyBinaryPostfix) {
-            yield exec.exec(`ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pypyLocation}${binaryExtension}`);
+            fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pypyLocation}${binaryExtension}`);
         }
-        yield exec.exec(`ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`);
+        fs.symlinkSync(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, `${pythonLocation}${binaryExtension}`);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         yield installPiP(pypyBinaryPath);
     });

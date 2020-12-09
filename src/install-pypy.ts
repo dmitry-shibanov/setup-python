@@ -4,6 +4,7 @@ import * as tc from '@actions/tool-cache';
 import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
+import * as fs from 'fs';
 
 const IS_WINDOWS = process.platform === 'win32';
 
@@ -98,19 +99,21 @@ export async function createSymlinks(
   const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
 
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
-  // TO-DO: revisit necessary of symlinks
   const pythonLocation = path.join(pypyBinaryPath, 'python');
   const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-  await exec.exec(
-    `ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
+  fs.symlinkSync(
+    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
+    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
   if (pypyBinaryPostfix) {
-    await exec.exec(
-      `ln -sfn ${pypyLocation}${pypyBinaryPostfix}${binaryExtension} ${pypyLocation}${binaryExtension}`
+    fs.symlinkSync(
+      `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
+      `${pypyLocation}${binaryExtension}`
     );
   }
-  await exec.exec(
-    `ln -sfn ${pythonLocation}${pythonBinaryPostfix}${binaryExtension} ${pythonLocation}${binaryExtension}`
+  fs.symlinkSync(
+    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`,
+    `${pythonLocation}${binaryExtension}`
   );
   await exec.exec(
     `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
