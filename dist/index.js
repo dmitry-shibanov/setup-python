@@ -1110,8 +1110,11 @@ function findPyPyVersion(versionSpec, architecture) {
         let resolvedPythonVersion = '';
         let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
+        core.debug(`current architecture is ${architecture}`);
+        core.debug(`current platform is ${process.platform} ${IS_WINDOWS}`);
         if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
+            core.debug(`Architecture was changed to ${architecture}`);
         }
         ({ installDir, resolvedPythonVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, architecture));
         if (installDir) {
