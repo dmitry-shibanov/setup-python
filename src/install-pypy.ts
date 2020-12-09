@@ -60,7 +60,6 @@ export async function installPyPy(
     downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
 
-  core.info('Execute installation script');
   const toolDir = path.join(downloadDir, archiveName!);
   const installDir = await tc.cacheDir(
     toolDir,

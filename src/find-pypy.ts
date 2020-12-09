@@ -98,7 +98,6 @@ async function findPyPyToolCache(
   if (!resolvedPythonVersion) {
     return {installDir: null, resolvedPythonVersion: '', resolvedPyPyVersion};
   }
-  core.debug(`maxSatisfying version is ${resolvedPythonVersion}`);
 
   let installDir: string | null = tc.find(
     'PyPy',
@@ -107,7 +106,6 @@ async function findPyPyToolCache(
   );
 
   if (installDir) {
-    core.info(`Found PyPy installDir from version file is ${installDir}`);
     resolvedPyPyVersion = await getExactPyPyVersion(installDir);
 
     const isPyPyVersionSatisfies = semver.satisfies(
@@ -126,7 +124,7 @@ function getExactPyPyVersion(installDir: string) {
   let fileVersion = path.join(installDir, 'PYPY_VERSION');
   if (fs.existsSync(fileVersion)) {
     pypyVersion = fs.readFileSync(fileVersion).toString();
-    core.info(`Version from PYPY_VERSION file is ${pypyVersion}`);
+    core.debug(`Version from PYPY_VERSION file is ${pypyVersion}`);
   }
 
   return pypyVersion;

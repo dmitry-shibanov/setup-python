@@ -19,7 +19,7 @@ jobs:
 # pypy-3.6-v7.3.3-rc.1
 
   setup-pypy-versions-from-manifest:
-    name: Setup ${{ matrix.python }} ${{ matrix.os }}
+    name: Setup ${{ matrix.pypy }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
