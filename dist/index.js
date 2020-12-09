@@ -1143,11 +1143,15 @@ function findPyPyVersion(versionSpec, architecture) {
 exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, architecture) {
     const allVersions = tc.findAllVersions('PyPy');
+    core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
     const version = semver.maxSatisfying(allVersions, pythonVersion);
     if (!version) {
+        core.info('maxSatisfying found no version');
         return { installDir: null, resolvedPythonVersion: '' };
     }
+    core.debug(`maxSatisfying version is ${version}`);
     const installDir = tc.find('PyPy', version, architecture);
+    core.info(`Found PyPy is ${installDir}`);
     return { installDir, resolvedPythonVersion: version };
 }
 function getExactPyPyVersionFromFile(installDir) {
@@ -1155,6 +1159,7 @@ function getExactPyPyVersionFromFile(installDir) {
     let fileVersion = path.join(installDir, 'pypy_version');
     if (fs.existsSync(fileVersion)) {
         pypyVersion = fs.readFileSync(fileVersion).toString();
+        core.info(`Version from pypy_version file is ${pypyVersion}`);
     }
     return pypyVersion;
 }
@@ -2798,6 +2803,9 @@ function getAvailablePyPyVersions() {
         return response.result;
     });
 }
+function isFileExists(filePath) {
+    return fs.existsSync(filePath);
+}
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
@@ -2811,11 +2819,12 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         let binaryExtension = IS_WINDOWS ? '.exe' : '';
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-        fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
-        if (pypyBinaryPostfix) {
+        isFileExists(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`) ||
+            fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
+        isFileExists(`${pypyLocation}${binaryExtension}`) ||
             fs.symlinkSync(`${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, `${pypyLocation}${binaryExtension}`);
-        }
-        fs.symlinkSync(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, `${pythonLocation}${binaryExtension}`);
+        isFileExists(`${pythonLocation}${binaryExtension}`) ||
+            fs.symlinkSync(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, `${pythonLocation}${binaryExtension}`);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         yield installPiP(pypyBinaryPath);
     });

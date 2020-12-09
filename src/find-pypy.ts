@@ -76,13 +76,17 @@ export async function findPyPyVersion(
 
 function findPyPyToolCache(pythonVersion: semver.Range, architecture: string) {
   const allVersions = tc.findAllVersions('PyPy');
+  core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
   const version = semver.maxSatisfying(allVersions, pythonVersion);
 
   if (!version) {
+    core.info('maxSatisfying found no version');
     return {installDir: null, resolvedPythonVersion: ''};
   }
+  core.debug(`maxSatisfying version is ${version}`);
 
   const installDir = tc.find('PyPy', version, architecture);
+  core.info(`Found PyPy is ${installDir}`);
   return {installDir, resolvedPythonVersion: version};
 }
 
@@ -91,6 +95,7 @@ function getExactPyPyVersionFromFile(installDir: string) {
   let fileVersion = path.join(installDir, 'pypy_version');
   if (fs.existsSync(fileVersion)) {
     pypyVersion = fs.readFileSync(fileVersion).toString();
+    core.info(`Version from pypy_version file is ${pypyVersion}`);
   }
 
   return pypyVersion;

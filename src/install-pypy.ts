@@ -85,6 +85,9 @@ async function getAvailablePyPyVersions() {
   return response.result;
 }
 
+function isFileExists(filePath: string) {
+  return fs.existsSync(filePath);
+}
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
@@ -101,20 +104,21 @@ export async function createSymlinks(
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
   const pythonLocation = path.join(pypyBinaryPath, 'python');
   const pypyLocation = path.join(pypyBinaryPath, 'pypy');
-  fs.symlinkSync(
-    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
-    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
-  );
-  if (pypyBinaryPostfix) {
+  isFileExists(`${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`) ||
+    fs.symlinkSync(
+      `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
+      `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
+    );
+  isFileExists(`${pypyLocation}${binaryExtension}`) ||
     fs.symlinkSync(
       `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`,
       `${pypyLocation}${binaryExtension}`
     );
-  }
-  fs.symlinkSync(
-    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`,
-    `${pythonLocation}${binaryExtension}`
-  );
+  isFileExists(`${pythonLocation}${binaryExtension}`) ||
+    fs.symlinkSync(
+      `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`,
+      `${pythonLocation}${binaryExtension}`
+    );
   await exec.exec(
     `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
