@@ -36,7 +36,10 @@ export async function findPyPyVersion(
   ));
 
   if (installDir) {
-    resolvedPyPyVersion = await getExactPyPyVersion(installDir);
+    resolvedPyPyVersion = await getExactPyPyVersion(
+      installDir,
+      resolvedPythonVersion
+    );
 
     const isPyPyVersionSatisfies = semver.satisfies(
       resolvedPyPyVersion,
@@ -104,11 +107,12 @@ function getExactPyPyVersionFromFile(installDir: string) {
   return pypyVersion;
 }
 
-async function getExactPyPyVersion(installDir: string) {
+async function getExactPyPyVersion(installDir: string, pythonVersion: string) {
   const pypyBinary = getPyPyBinaryPath(installDir);
   let versionOutput = getExactPyPyVersionFromFile(installDir);
   if (!versionOutput) {
-    const pypyExecutables = path.join(pypyBinary, 'pypy');
+    const major = semver.major(pythonVersion) === 3 ? '3' : '';
+    const pypyExecutables = path.join(pypyBinary, `pypy${major}`);
     await exec.exec(
       `${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`,
       [],

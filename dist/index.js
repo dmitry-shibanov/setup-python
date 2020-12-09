@@ -1118,7 +1118,7 @@ function findPyPyVersion(versionSpec, architecture) {
         }
         ({ installDir, resolvedPythonVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, architecture));
         if (installDir) {
-            resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
+            resolvedPyPyVersion = yield getExactPyPyVersion(installDir, resolvedPythonVersion);
             const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersionSpec.pypyVersion);
             if (!isPyPyVersionSatisfies) {
                 installDir = null;
@@ -1166,12 +1166,13 @@ function getExactPyPyVersionFromFile(installDir) {
     }
     return pypyVersion;
 }
-function getExactPyPyVersion(installDir) {
+function getExactPyPyVersion(installDir, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const pypyBinary = getPyPyBinaryPath(installDir);
         let versionOutput = getExactPyPyVersionFromFile(installDir);
         if (!versionOutput) {
-            const pypyExecutables = path.join(pypyBinary, 'pypy');
+            const major = semver.major(pythonVersion) === 3 ? '3' : '';
+            const pypyExecutables = path.join(pypyBinary, `pypy${major}`);
             yield exec.exec(`${pypyExecutables} -c "import sys;print('.'.join([str(int) for int in sys.pypy_version_info[0:3]]))"`, [], {
                 ignoreReturnCode: true,
                 silent: true,
