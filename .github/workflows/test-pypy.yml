@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-16.04, ubuntu-18.04]
-        pypy: ['pypy-3.7-v7.3.3', 'pypy-3.6-v7.3.3', 'pypy-3.6-v7.3.2', 'pypy-2-v7.3.3','pypy-3.7-v7.3.x', 'pypy-3.6-v7.3.x', 'pypy-3.x-v7.3.x', 'pypy-3.7-v7.x', 'pypy-3.x-v7.x', 'pypy-3.6-v7.3.x', 'pypy-3.6-v7.x', 'pypy-3.6', 'pypy-3', 'pypy-2']
+        pypy: ['pypy-3.7-v7.3.3', 'pypy-3.6-v7.3.3', 'pypy-3.6-v7.3.2', 'pypy-2-v7.3.3','pypy-3.7-v7.3.x', 'pypy-3.6-v7.3.x', 'pypy-3.x-v7.3.x', 'pypy-3.7-v7.x', 'pypy-3.x-v7.x', 'pypy-3.6-v7.3.x', 'pypy-3.6-v7.x', 'pypy-3.6', 'pypy-3', 'pypy-2', 'pypy-3.6-vx', 'pypy-3.7-vx', 'pypy-3.x-vx']
     steps:
     - name: Checkout
       uses: actions/checkout@v2

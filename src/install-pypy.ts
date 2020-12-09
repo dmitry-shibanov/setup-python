@@ -63,7 +63,6 @@ export async function installPyPy(
   }
 
   core.debug(`Extracted archives to ${downloadDir}`);
-  core.debug(`Archive name is ${archiveName}`);
 
   const toolDir = path.join(downloadDir, archiveName!);
   const installDir = await tc.cacheDir(

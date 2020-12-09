@@ -23,11 +23,9 @@ export async function findPyPyVersion(
   let installDir: string | null;
 
   const pypyVersionSpec = parsePyPyVersion(versionSpec);
-  core.debug(`current architecture is ${architecture}`);
-  core.debug(`current platform is ${process.platform} ${IS_WINDOWS}`);
+
   if (IS_WINDOWS && architecture === 'x64') {
     architecture = 'x86';
-    core.debug(`Architecture was changed to ${architecture}`);
   }
 
   ({installDir, resolvedPythonVersion} = findPyPyToolCache(
@@ -65,12 +63,9 @@ export async function findPyPyVersion(
       getPyPyBinaryPath(installDir),
       resolvedPythonVersion
     );
-    core.info('debug creation files');
+
     const pypyFilePath = path.join(installDir, 'pypy_version');
     fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-
-    const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
-    core.info(`pypyFileContent is ${pypyFileContent}`);
   }
 
   const pythonLocation = getPyPyBinaryPath(installDir);
@@ -89,13 +84,12 @@ function findPyPyToolCache(pythonVersion: semver.Range, architecture: string) {
   const version = semver.maxSatisfying(allVersions, pythonVersion);
 
   if (!version) {
-    core.info('maxSatisfying found no version');
     return {installDir: null, resolvedPythonVersion: ''};
   }
   core.debug(`maxSatisfying version is ${version}`);
 
   const installDir = tc.find('PyPy', version, architecture);
-  core.info(`Found PyPy is ${installDir}`);
+  core.info(`Found PyPy installDir from version file is ${installDir}`);
   return {installDir, resolvedPythonVersion: version};
 }
 

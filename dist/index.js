@@ -1110,11 +1110,8 @@ function findPyPyVersion(versionSpec, architecture) {
         let resolvedPythonVersion = '';
         let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
-        core.debug(`current architecture is ${architecture}`);
-        core.debug(`current platform is ${process.platform} ${IS_WINDOWS}`);
         if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
-            core.debug(`Architecture was changed to ${architecture}`);
         }
         ({ installDir, resolvedPythonVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, architecture));
         if (installDir) {
@@ -1131,11 +1128,8 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
-            core.info('debug creation files');
             const pypyFilePath = path.join(installDir, 'pypy_version');
             fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-            const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
-            core.info(`pypyFileContent is ${pypyFileContent}`);
         }
         const pythonLocation = getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
@@ -1153,12 +1147,11 @@ function findPyPyToolCache(pythonVersion, architecture) {
     core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
     const version = semver.maxSatisfying(allVersions, pythonVersion);
     if (!version) {
-        core.info('maxSatisfying found no version');
         return { installDir: null, resolvedPythonVersion: '' };
     }
     core.debug(`maxSatisfying version is ${version}`);
     const installDir = tc.find('PyPy', version, architecture);
-    core.info(`Found PyPy is ${installDir}`);
+    core.info(`Found PyPy installDir from version file is ${installDir}`);
     return { installDir, resolvedPythonVersion: version };
 }
 function getExactPyPyVersionFromFile(installDir) {
@@ -2793,7 +2786,6 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
         core.debug(`Extracted archives to ${downloadDir}`);
-        core.debug(`Archive name is ${archiveName}`);
         const toolDir = path.join(downloadDir, archiveName);
         const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
