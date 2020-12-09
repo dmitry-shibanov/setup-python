@@ -1145,7 +1145,7 @@ function findPyPyVersion(versionSpec, architecture) {
 }
 exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, architecture) {
-    const allVersions = tc.findAllVersions('PyPy');
+    const allVersions = tc.findAllVersions('PyPy', architecture);
     core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
     const version = semver.maxSatisfying(allVersions, pythonVersion);
     if (!version) {

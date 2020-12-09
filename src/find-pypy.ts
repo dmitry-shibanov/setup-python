@@ -78,7 +78,7 @@ export async function findPyPyVersion(
 }
 
 function findPyPyToolCache(pythonVersion: semver.Range, architecture: string) {
-  const allVersions = tc.findAllVersions('PyPy');
+  const allVersions = tc.findAllVersions('PyPy', architecture);
   core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
   const version = semver.maxSatisfying(allVersions, pythonVersion);
 
