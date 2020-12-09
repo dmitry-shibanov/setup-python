@@ -2790,7 +2790,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         core.debug(`Extracted archives to ${downloadDir}`);
         core.debug(`Archive name is ${archiveName}`);
         const toolDir = path.join(downloadDir, archiveName);
-        const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion);
+        const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
     });
 }

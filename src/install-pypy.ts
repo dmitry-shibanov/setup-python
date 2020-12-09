@@ -66,7 +66,12 @@ export async function installPyPy(
   core.debug(`Archive name is ${archiveName}`);
 
   const toolDir = path.join(downloadDir, archiveName!);
-  const installDir = await tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion);
+  const installDir = await tc.cacheDir(
+    toolDir,
+    'PyPy',
+    resolvedPythonVersion,
+    architecture
+  );
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
