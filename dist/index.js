@@ -2838,6 +2838,12 @@ function installPiP(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
         yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
+        if (IS_WINDOWS) {
+            const binPath = path.join(pythonLocation, 'bin');
+            const scriptPath = path.join(pythonLocation, 'Scripts');
+            fs.symlinkSync(scriptPath, binPath);
+            core.addPath(binPath);
+        }
     });
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
