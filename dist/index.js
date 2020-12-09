@@ -1140,6 +1140,10 @@ function findPyPyVersion(versionSpec, architecture) {
         const pythonLocation = getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
         core.addPath(pythonLocation);
+        if (IS_WINDOWS) {
+            const _binDir = path.join(installDir, 'bin');
+            core.addPath(_binDir);
+        }
         return { resolvedPyPyVersion, resolvedPythonVersion };
     });
 }
@@ -2842,7 +2846,6 @@ function installPiP(pythonLocation) {
             const binPath = path.join(pythonLocation, 'bin');
             const scriptPath = path.join(pythonLocation, 'Scripts');
             fs.symlinkSync(scriptPath, binPath);
-            core.addPath(binPath);
         }
     });
 }

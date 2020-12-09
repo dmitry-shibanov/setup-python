@@ -76,7 +76,10 @@ export async function findPyPyVersion(
   const pythonLocation = getPyPyBinaryPath(installDir);
   core.exportVariable('pythonLocation', pythonLocation);
   core.addPath(pythonLocation);
-
+  if (IS_WINDOWS) {
+    const _binDir = path.join(installDir, 'bin');
+    core.addPath(_binDir);
+  }
   return {resolvedPyPyVersion, resolvedPythonVersion};
 }
 
