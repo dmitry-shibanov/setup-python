@@ -1,0 +1,39 @@
+name: Validate PyPy
+on: [push, pull_request]
+
+jobs:
+# pypy-3.7-v7.3.3/
+# pypy-3.x-v7.x // NOTE THIS CASE; WILL FIXED FOR NOW/
+# pypy-3.6-v7.3.3/
+# pypy-2-v7.3.3
+
+# pypy-3.6-v7.3.2
+# pypy-3.6-v7.3.x
+# pypy-3.6-v7.x
+# pypy-3.6
+# pypy-3
+# pypy-2
+
+# pypy-3.6-nightly
+# pypy-3.7-nightly
+# pypy-3.6-v7.3.3-rc.1
+
+  setup-pypy-versions-from-manifest:
+    name: Setup ${{ matrix.python }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-16.04, ubuntu-18.04]
+        pypy: ['pypy-3.7-v7.3.3', 'pypy-3.6-v7.3.3', 'pypy-3.6-v7.3.2', 'pypy-2-v7.3.3','pypy3.7-v7.3.x', 'pypy3.6-v7.3.x', 'pypy3.x-v7.3.x', 'pypy3.7-v7.x', 'pypy3.x-v7.x', 'pypy-3.6-v7.3.x', 'pypy-3.6-v7.x', 'pypy-3.6', 'pypy-3', 'pypy-2']
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: setup-python ${{ matrix.pypy }}
+      uses: ./
+      with:
+        python-version: ${{ matrix.pypy }}
+
+    - name: Run simple code
+      run: python -c 'import math; print(math.factorial(5))'

@@ -62,7 +62,7 @@ export async function findPyPyVersion(
       getPyPyBinaryPath(installDir),
       resolvedPythonVersion
     );
-    core.info('debu creation files');
+    core.info('debug creation files');
     const pypyFilePath = path.join(installDir, 'pypy_version');
     fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
 

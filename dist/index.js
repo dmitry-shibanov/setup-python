@@ -1130,7 +1130,7 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
             yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
-            core.info('debu creation files');
+            core.info('debug creation files');
             const pypyFilePath = path.join(installDir, 'pypy_version');
             fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
             const pypyFileContent = fs.readFileSync(pypyFilePath).toString();
