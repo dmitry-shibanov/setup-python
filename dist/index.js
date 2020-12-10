@@ -1144,7 +1144,9 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
             resolvedPyPyVersion = '';
         }
     }
-    core.info(`PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`);
+    if (!installDir) {
+        core.info(`PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`);
+    }
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
 function parsePyPyVersion(versionSpec) {
@@ -2751,7 +2753,7 @@ function getAvailablePyPyVersions() {
         const http = new httpm.HttpClient('tool-cache');
         const response = yield http.getJson(url);
         if (!response.result) {
-            throw new Error(`Unable to retrieve the list of available PyPy versions...`);
+            throw new Error(`Unable to retrieve the list of available PyPy versions from '${url}'`);
         }
         return response.result;
     });
@@ -2777,7 +2779,6 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
         const pypyLocation = path.join(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`);
         const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
         createSymlink(pypyLocation, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
-        // To-Do
         createSymlink(pypyLocation, pypySimlink);
         createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
@@ -2817,10 +2818,6 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     };
 }
 // helper functions
-function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
-    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
-    fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-}
 /**
  * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
  * There is no easy way to determine what PyPy version is located in specific folder
@@ -2839,6 +2836,10 @@ function readExactPyPyVersion(installDir) {
     return pypyVersion;
 }
 exports.readExactPyPyVersion = readExactPyPyVersion;
+function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
+    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+    fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+}
 /** Get PyPy binary location from the tool of installation directory
  *  - On Linux and macOS, the Python interpreter is in 'bin'.
  *  - On Windows, it is in the installation root.

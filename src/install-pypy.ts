@@ -84,7 +84,7 @@ async function getAvailablePyPyVersions() {
   const response = await http.getJson<IPyPyManifestRelease[]>(url);
   if (!response.result) {
     throw new Error(
-      `Unable to retrieve the list of available PyPy versions...`
+      `Unable to retrieve the list of available PyPy versions from '${url}'`
     );
   }
 
@@ -124,7 +124,7 @@ async function createPyPySymlink(
     pypyLocation,
     `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
-  // To-Do
+
   createSymlink(pypyLocation, pypySimlink);
   createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
 
@@ -194,13 +194,6 @@ function findRelease(
 
 // helper functions
 
-function writeExactPyPyVersionFile(
-  installDir: string,
-  resolvedPyPyVersion: string
-) {
-  const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
-  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-}
 /**
  * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
  * There is no easy way to determine what PyPy version is located in specific folder
@@ -218,6 +211,14 @@ export function readExactPyPyVersion(installDir: string) {
   }
 
   return pypyVersion;
+}
+
+function writeExactPyPyVersionFile(
+  installDir: string,
+  resolvedPyPyVersion: string
+) {
+  const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
 }
 
 /** Get PyPy binary location from the tool of installation directory

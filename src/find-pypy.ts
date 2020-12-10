@@ -83,9 +83,13 @@ function findPyPyToolCache(
       resolvedPyPyVersion = '';
     }
   }
-  core.info(
-    `PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`
-  );
+
+  if (!installDir) {
+    core.info(
+      `PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`
+    );
+  }
+
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
 
