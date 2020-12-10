@@ -1139,35 +1139,21 @@ function findPyPyVersion(versionSpec, architecture) {
 }
 exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let resolvedPyPyVersion = '';
-        const allVersions = tc.findAllVersions('PyPy', architecture);
-        const filterVersions = allVersions.filter(item => {
-            let toolcachePyPy = tc.find('PyPy', item, architecture);
-            if (!toolcachePyPy) {
-                return false;
-            }
-            // To-Do
-            // pypy-3.x-v7.3.x
-            // 7.3.2 python 3.7
-            // 7.3.3 python 3.6
-            // should we do the same for our sort
-            let pypyVer = getExactPyPyVersion(toolcachePyPy);
-            return semver.satisfies(pypyVer, pypyVersion);
-        });
-        core.debug(`PyPy all versions are ${allVersions.join(' ')}`);
-        let resolvedPythonVersion = (_a = semver.maxSatisfying(filterVersions, pythonVersion)) !== null && _a !== void 0 ? _a : '';
-        if (!resolvedPythonVersion) {
-            return { installDir: null, resolvedPythonVersion: '', resolvedPyPyVersion };
+        let resolvedPythonVersion = '';
+        let installDir = tc.find('PyPy', pythonVersion.raw, architecture);
+        if (!installDir) {
+            return { installDir: null, resolvedPythonVersion, resolvedPyPyVersion };
         }
-        let installDir = tc.find('PyPy', resolvedPythonVersion, architecture);
-        if (installDir) {
-            resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
-            const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
-            if (!isPyPyVersionSatisfies) {
-                installDir = null;
-            }
+        resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
+        const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
+        if (!isPyPyVersionSatisfies) {
+            installDir = null;
+            resolvedPyPyVersion = '';
+        }
+        else {
+            resolvedPythonVersion = path.parse(path.parse(installDir).dir).base;
         }
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
     });
