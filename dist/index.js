@@ -1188,7 +1188,9 @@ function parsePyPyVersion(versionSpec) {
     let pypyVersion;
     if (versions.length > 2) {
         pypyVersion =
-            versions[2] === 'nightly' ? 'nightly' : new semver.Range(versions[2]);
+            versions[2] === 'nightly'
+                ? 'nightly'
+                : new semver.Range(pypyInstall.pythonVersionToSemantic(versions[2]));
     }
     else {
         pypyVersion = new semver.Range('x');
@@ -2841,13 +2843,13 @@ exports.installPip = installPip;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     if (pypyVersion.toString() !== 'nightly') {
         const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-            semver.satisfies(item.pypy_version, pypyVersion) &&
+            semver.satisfies(pythonVersionToSemantic(item.pypy_version), pypyVersion) &&
             item.files.some(file => file.arch === architecture && file.platform === process.platform));
         if (filterReleases.length === 0) {
             return null;
         }
         const sortedReleases = filterReleases.sort((previous, current) => {
-            return (semver.compare(semver.coerce(current.pypy_version), semver.coerce(previous.pypy_version)) ||
+            return (semver.compare(semver.coerce(pythonVersionToSemantic(current.pypy_version)), semver.coerce(pythonVersionToSemantic(previous.pypy_version))) ||
                 semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
         });
         const foundRelease = sortedReleases[0];

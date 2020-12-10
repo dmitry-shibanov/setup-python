@@ -132,7 +132,9 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   let pypyVersion: semver.Range | string;
   if (versions.length > 2) {
     pypyVersion =
-      versions[2] === 'nightly' ? 'nightly' : new semver.Range(versions[2]);
+      versions[2] === 'nightly'
+        ? 'nightly'
+        : new semver.Range(pypyInstall.pythonVersionToSemantic(versions[2]));
   } else {
     pypyVersion = new semver.Range('x');
   }
