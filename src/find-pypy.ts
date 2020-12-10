@@ -69,23 +69,23 @@ function findPyPyToolCache(
     pythonVersion.raw,
     architecture
   );
-  if (!installDir) {
-    return {installDir: null, resolvedPythonVersion, resolvedPyPyVersion};
-  }
 
-  resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
-
-  const isPyPyVersionSatisfies = semver.satisfies(
-    resolvedPyPyVersion,
-    pypyVersion
-  );
-  if (!isPyPyVersionSatisfies) {
-    installDir = null;
-    resolvedPyPyVersion = '';
-  } else {
+  if (installDir) {
     resolvedPythonVersion = getPyPyVersionFromPath(installDir);
-  }
+    resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
 
+    const isPyPyVersionSatisfies = semver.satisfies(
+      resolvedPyPyVersion,
+      pypyVersion
+    );
+    if (!isPyPyVersionSatisfies) {
+      installDir = null;
+      resolvedPyPyVersion = '';
+    }
+  }
+  core.info(
+    `PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`
+  );
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
 
@@ -93,7 +93,9 @@ function parsePyPyVersion(versionSpec: string) {
   const versions = versionSpec.split('-');
 
   if (versions.length < 2) {
-    throw new Error('Please specify valid version Specification for PyPy.');
+    throw new Error(
+      "Input version property for PyPy version should be specifyed as 'pypy-<python-version>'"
+    );
   }
   const pythonVersion = new semver.Range(versions[1]);
   const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
@@ -105,5 +107,5 @@ function parsePyPyVersion(versionSpec: string) {
 }
 
 function getPyPyVersionFromPath(installDir: string) {
-  return path.parse(path.parse(installDir).dir).base;
+  return path.basename(path.dirname(installDir));
 }
