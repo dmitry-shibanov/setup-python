@@ -2764,8 +2764,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
-        let archive = url.parse(downloadUrl).pathname.replace('/pypy/', '');
-        let archiveName = archive.replace(/.zip|.tar.bz2/g, '');
+        let archiveName;
         core.info(`Download PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
@@ -2776,8 +2775,19 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         else {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
+        if (resolvedPyPyVersion === 'nightly') {
+            const dirContent = fs.readdirSync(downloadDir);
+            archiveName = dirContent.find(item => item.startsWith('pypy-c'));
+        }
+        else {
+            let archive = url.parse(downloadUrl).pathname.replace('/pypy/', '');
+            archiveName = archive.replace(/.zip|.tar.bz2/g, '');
+        }
         const toolDir = path.join(downloadDir, archiveName);
-        const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
+        let installDir = toolDir;
+        if (resolvedPyPyVersion !== 'nightly') {
+            installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
+        }
         const pypyFilePath = path.join(installDir, PYPY_VERSION);
         fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
