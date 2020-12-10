@@ -9,7 +9,7 @@ import * as tc from '@actions/tool-cache';
 const IS_WINDOWS = process.platform === 'win32';
 
 interface IPyPyVersionSpec {
-  pypyVersion: semver.Range;
+  pypyVersion: semver.Range | string;
   pythonVersion: semver.Range;
 }
 
@@ -69,7 +69,7 @@ export async function findPyPyVersion(
 
 async function findPyPyToolCache(
   pythonVersion: semver.Range,
-  pypyVersion: semver.Range,
+  pypyVersion: semver.Range | string,
   architecture: string
 ) {
   let resolvedPyPyVersion = '';
@@ -129,9 +129,13 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
     throw new Error('Please specify valid version Specification for PyPy.');
   }
   const pythonVersion = new semver.Range(versions[1]);
-  const pypyVersion = new semver.Range(
-    versions.length > 2 ? pypyInstall.pythonVersionToSemantic(versions[2]) : 'x'
-  );
+  let pypyVersion: semver.Range | string;
+  if (versions.length > 2) {
+    pypyVersion =
+      versions[2] === 'nightly' ? 'nightly' : new semver.Range(versions[2]);
+  } else {
+    pypyVersion = new semver.Range('x');
+  }
 
   return {
     pypyVersion: pypyVersion,

@@ -26,7 +26,7 @@ interface IPyPyManifestRelease {
 }
 
 export async function installPyPy(
-  pypyVersion: semver.Range,
+  pypyVersion: semver.Range | string,
   pythonVersion: semver.Range,
   architecture: string
 ) {
@@ -41,9 +41,7 @@ export async function installPyPy(
   );
 
   if (!releaseData || !releaseData.foundAsset) {
-    throw new Error(
-      `The specifyed release with pypy version ${pypyVersion.raw} and python version ${pythonVersion.raw} was not found`
-    );
+    throw new Error(`The specifyed release for PyPy version was not found`);
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
@@ -149,49 +147,74 @@ export async function installPip(pythonLocation: string) {
 function findRelease(
   releases: IPyPyManifestRelease[],
   pythonVersion: semver.Range,
-  pypyVersion: semver.Range,
+  pypyVersion: semver.Range | string,
   architecture: string
 ) {
-  const filterReleases = releases.filter(
-    item =>
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(
-        pythonVersionToSemantic(item.pypy_version),
-        pypyVersion
-      ) &&
-      item.files.some(
-        file => file.arch === architecture && file.platform === process.platform
-      )
-  );
-
-  if (filterReleases.length === 0) {
-    return null;
-  }
-
-  // double check coerce
-  const sortedReleases = filterReleases.sort((previous, current) => {
-    return (
-      semver.compare(
-        semver.coerce(pythonVersionToSemantic(current.pypy_version))!,
-        semver.coerce(pythonVersionToSemantic(previous.pypy_version))!
-      ) ||
-      semver.compare(
-        semver.coerce(current.python_version)!,
-        semver.coerce(previous.python_version)!
-      )
+  if (pypyVersion.toString() !== 'nightly') {
+    const filterReleases = releases.filter(
+      item =>
+        semver.satisfies(item.python_version, pythonVersion) &&
+        semver.satisfies(item.pypy_version, pypyVersion) &&
+        item.files.some(
+          file =>
+            file.arch === architecture && file.platform === process.platform
+        )
     );
-  });
 
-  const foundRelease = sortedReleases[0];
-  const foundAsset = foundRelease.files.find(
-    item => item.arch === architecture && item.platform === process.platform
-  );
+    if (filterReleases.length === 0) {
+      return null;
+    }
 
-  return {
-    foundAsset,
-    resolvedPythonVersion: foundRelease.python_version,
-    resolvedPyPyVersion: foundRelease.pypy_version
-  };
+    const sortedReleases = filterReleases.sort((previous, current) => {
+      return (
+        semver.compare(
+          semver.coerce(current.pypy_version)!,
+          semver.coerce(previous.pypy_version)!
+        ) ||
+        semver.compare(
+          semver.coerce(current.python_version)!,
+          semver.coerce(previous.python_version)!
+        )
+      );
+    });
+
+    const foundRelease = sortedReleases[0];
+    const foundAsset = foundRelease.files.find(
+      item => item.arch === architecture && item.platform === process.platform
+    );
+
+    return {
+      foundAsset,
+      resolvedPythonVersion: foundRelease.python_version,
+      resolvedPyPyVersion: foundRelease.pypy_version
+    };
+  } else {
+    const foundRelease = releases.filter(item => {
+      const semverPython = semver.coerce(item.python_version)!;
+      return (
+        item.pypy_version === 'nightly' &&
+        semver.satisfies(semverPython, pythonVersion) &&
+        item.files.some(
+          file =>
+            file.arch === architecture && file.platform === process.platform
+        )
+      );
+    });
+
+    if (foundRelease.length === 0) {
+      return null;
+    }
+
+    const foundAsset = foundRelease[0].files.find(
+      item => item.arch === architecture && item.platform === process.platform
+    );
+
+    return {
+      foundAsset,
+      resolvedPythonVersion: foundRelease[0].python_version,
+      resolvedPyPyVersion: foundRelease[0].pypy_version
+    };
+  }
 }
 
 export function pythonVersionToSemantic(versionSpec: string) {

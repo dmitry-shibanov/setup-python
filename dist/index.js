@@ -1185,7 +1185,14 @@ function parsePyPyVersion(versionSpec) {
         throw new Error('Please specify valid version Specification for PyPy.');
     }
     const pythonVersion = new semver.Range(versions[1]);
-    const pypyVersion = new semver.Range(versions.length > 2 ? pypyInstall.pythonVersionToSemantic(versions[2]) : 'x');
+    let pypyVersion;
+    if (versions.length > 2) {
+        pypyVersion =
+            versions[2] === 'nightly' ? 'nightly' : new semver.Range(versions[2]);
+    }
+    else {
+        pypyVersion = new semver.Range('x');
+    }
     return {
         pypyVersion: pypyVersion,
         pythonVersion: pythonVersion
@@ -2751,7 +2758,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         const releases = yield getAvailablePyPyVersions();
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            throw new Error(`The specifyed release with pypy version ${pypyVersion.raw} and python version ${pythonVersion.raw} was not found`);
+            throw new Error(`The specifyed release for PyPy version was not found`);
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
@@ -2832,24 +2839,42 @@ function installPip(pythonLocation) {
 }
 exports.installPip = installPip;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-        semver.satisfies(pythonVersionToSemantic(item.pypy_version), pypyVersion) &&
-        item.files.some(file => file.arch === architecture && file.platform === process.platform));
-    if (filterReleases.length === 0) {
-        return null;
+    if (pypyVersion.toString() !== 'nightly') {
+        const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
+            semver.satisfies(item.pypy_version, pypyVersion) &&
+            item.files.some(file => file.arch === architecture && file.platform === process.platform));
+        if (filterReleases.length === 0) {
+            return null;
+        }
+        const sortedReleases = filterReleases.sort((previous, current) => {
+            return (semver.compare(semver.coerce(current.pypy_version), semver.coerce(previous.pypy_version)) ||
+                semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
+        });
+        const foundRelease = sortedReleases[0];
+        const foundAsset = foundRelease.files.find(item => item.arch === architecture && item.platform === process.platform);
+        return {
+            foundAsset,
+            resolvedPythonVersion: foundRelease.python_version,
+            resolvedPyPyVersion: foundRelease.pypy_version
+        };
     }
-    // double check coerce
-    const sortedReleases = filterReleases.sort((previous, current) => {
-        return (semver.compare(semver.coerce(pythonVersionToSemantic(current.pypy_version)), semver.coerce(pythonVersionToSemantic(previous.pypy_version))) ||
-            semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
-    });
-    const foundRelease = sortedReleases[0];
-    const foundAsset = foundRelease.files.find(item => item.arch === architecture && item.platform === process.platform);
-    return {
-        foundAsset,
-        resolvedPythonVersion: foundRelease.python_version,
-        resolvedPyPyVersion: foundRelease.pypy_version
-    };
+    else {
+        const foundRelease = releases.filter(item => {
+            const semverPython = semver.coerce(item.python_version);
+            return (item.pypy_version === 'nightly' &&
+                semver.satisfies(semverPython, pythonVersion) &&
+                item.files.some(file => file.arch === architecture && file.platform === process.platform));
+        });
+        if (foundRelease.length === 0) {
+            return null;
+        }
+        const foundAsset = foundRelease[0].files.find(item => item.arch === architecture && item.platform === process.platform);
+        return {
+            foundAsset,
+            resolvedPythonVersion: foundRelease[0].python_version,
+            resolvedPyPyVersion: foundRelease[0].pypy_version
+        };
+    }
 }
 function pythonVersionToSemantic(versionSpec) {
     const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
