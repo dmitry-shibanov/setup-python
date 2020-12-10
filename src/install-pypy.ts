@@ -155,7 +155,10 @@ function findRelease(
   const filterReleases = releases.filter(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion) &&
+      semver.satisfies(
+        pythonVersionToSemantic(item.pypy_version),
+        pypyVersion
+      ) &&
       item.files.some(
         file => file.arch === architecture && file.platform === process.platform
       )
@@ -169,8 +172,8 @@ function findRelease(
   const sortedReleases = filterReleases.sort((previous, current) => {
     return (
       semver.compare(
-        semver.coerce(current.pypy_version)!,
-        semver.coerce(previous.pypy_version)!
+        semver.coerce(pythonVersionToSemantic(current.pypy_version))!,
+        semver.coerce(pythonVersionToSemantic(previous.pypy_version))!
       ) ||
       semver.compare(
         semver.coerce(current.python_version)!,

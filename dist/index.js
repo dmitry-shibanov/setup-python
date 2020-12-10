@@ -2833,14 +2833,14 @@ function installPip(pythonLocation) {
 exports.installPip = installPip;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-        semver.satisfies(item.pypy_version, pypyVersion) &&
+        semver.satisfies(pythonVersionToSemantic(item.pypy_version), pypyVersion) &&
         item.files.some(file => file.arch === architecture && file.platform === process.platform));
     if (filterReleases.length === 0) {
         return null;
     }
     // double check coerce
     const sortedReleases = filterReleases.sort((previous, current) => {
-        return (semver.compare(semver.coerce(current.pypy_version), semver.coerce(previous.pypy_version)) ||
+        return (semver.compare(semver.coerce(pythonVersionToSemantic(current.pypy_version)), semver.coerce(pythonVersionToSemantic(previous.pypy_version))) ||
             semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
     });
     const foundRelease = sortedReleases[0];
