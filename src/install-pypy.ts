@@ -7,7 +7,7 @@ import * as exec from '@actions/exec';
 import * as fs from 'fs';
 
 const IS_WINDOWS = process.platform === 'win32';
-const PYPY_VERSION = 'PYPY_VERSION';
+const PYPY_VERSION_FILE = 'PYPY_VERSION';
 
 interface IPyPyManifestAsset {
   filename: string;
@@ -53,7 +53,6 @@ export async function installPyPy(
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
 
-  // TO-DO: double check logs
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
@@ -68,8 +67,12 @@ export async function installPyPy(
     architecture
   );
 
-  const pypyFilePath = path.join(installDir, PYPY_VERSION);
-  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+  writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
+
+  const binaryPath = getPyPyBinaryPath(installDir);
+  await createSymlinks(binaryPath, resolvedPythonVersion);
+
+  await installPip(binaryPath);
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
@@ -101,10 +104,7 @@ function createSymlink(sourcePath: string, targetPath: string) {
   fs.symlinkSync(sourcePath, targetPath);
 }
 
-export async function createSymlinks(
-  pypyBinaryPath: string,
-  pythonVersion: string
-) {
+async function createSymlinks(pypyBinaryPath: string, pythonVersion: string) {
   const version = semver.coerce(pythonVersion)!;
   const pythonBinaryPostfix = semver.major(version);
   const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
@@ -132,7 +132,7 @@ export async function createSymlinks(
   );
 }
 
-export async function installPip(pythonLocation: string) {
+async function installPip(pythonLocation: string) {
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
@@ -187,4 +187,38 @@ function findRelease(
     resolvedPythonVersion: foundRelease.python_version,
     resolvedPyPyVersion: foundRelease.pypy_version
   };
+}
+
+// helper functions
+
+/** Get PyPy binary location from the tool of installation directory
+ *  - On Linux and macOS, the Python interpreter is in 'bin'.
+ *  - On Windows, it is in the installation root.
+ */
+export function getPyPyBinaryPath(installDir: string) {
+  const _binDir = path.join(installDir, 'bin');
+  return IS_WINDOWS ? installDir : _binDir;
+}
+
+export function readExactPyPyVersion(installDir: string) {
+  let pypyVersion = '';
+  let fileVersion = path.join(installDir, PYPY_VERSION_FILE);
+  if (fs.existsSync(fileVersion)) {
+    // PYPY_VERSION file contains version of PyPy. File was added because
+    // stable PyPy versions can have beta or alpha prerelease even if we donwload
+    // through official stable link. PYPY_VERSION create in time of image generation
+    // and hold version
+    pypyVersion = fs.readFileSync(fileVersion).toString();
+    core.debug(`Version from ${PYPY_VERSION_FILE} file is ${pypyVersion}`);
+  }
+
+  return pypyVersion;
+}
+
+function writeExactPyPyVersionFile(
+  installDir: string,
+  resolvedPyPyVersion: string
+) {
+  const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
 }

@@ -1098,7 +1098,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(__webpack_require__(622));
 const pypyInstall = __importStar(__webpack_require__(369));
-const fs = __importStar(__webpack_require__(747));
 const semver = __importStar(__webpack_require__(876));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
@@ -1115,22 +1114,16 @@ function findPyPyVersion(versionSpec, architecture) {
         if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
         }
-        ({
-            installDir,
-            resolvedPythonVersion,
-            resolvedPyPyVersion
-        } = yield findPyPyToolCache(pypyVersionSpec.pythonVersion, pypyVersionSpec.pypyVersion, architecture));
+        ({ installDir, resolvedPythonVersion, resolvedPyPyVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, pypyVersionSpec.pypyVersion, architecture));
         if (!installDir) {
             ({
                 installDir,
                 resolvedPythonVersion,
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
-            yield pypyInstall.createSymlinks(getPyPyBinaryPath(installDir), resolvedPythonVersion);
-            yield pypyInstall.installPip(getPyPyBinaryPath(installDir));
         }
         const _binDir = path.join(installDir, 'bin');
-        const pythonLocation = getPyPyBinaryPath(installDir);
+        const pythonLocation = pypyInstall.getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
         core.addPath(pythonLocation);
         core.addPath(_binDir);
@@ -1139,48 +1132,25 @@ function findPyPyVersion(versionSpec, architecture) {
 }
 exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let resolvedPyPyVersion = '';
-        let resolvedPythonVersion = '';
-        let installDir = tc.find('PyPy', pythonVersion.raw, architecture);
-        if (!installDir) {
-            return { installDir: null, resolvedPythonVersion, resolvedPyPyVersion };
-        }
-        resolvedPyPyVersion = yield getExactPyPyVersion(installDir);
-        const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
-        if (!isPyPyVersionSatisfies) {
-            installDir = null;
-            resolvedPyPyVersion = '';
-        }
-        else {
-            resolvedPythonVersion = path.parse(path.parse(installDir).dir).base;
-        }
-        return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
-    });
-}
-function getExactPyPyVersion(installDir) {
-    let pypyVersion = '';
-    let fileVersion = path.join(installDir, 'PYPY_VERSION');
-    if (fs.existsSync(fileVersion)) {
-        pypyVersion = fs.readFileSync(fileVersion).toString();
-        core.debug(`Version from PYPY_VERSION file is ${pypyVersion}`);
+    let resolvedPyPyVersion = '';
+    let resolvedPythonVersion = '';
+    let installDir = tc.find('PyPy', pythonVersion.raw, architecture);
+    if (!installDir) {
+        return { installDir: null, resolvedPythonVersion, resolvedPyPyVersion };
     }
-    return pypyVersion;
-}
-/** Get PyPy binary location from the tool of installation directory
- *  - On Linux and macOS, the Python interpreter is in 'bin'.
- *  - On Windows, it is in the installation root.
- */
-function getPyPyBinaryPath(installDir) {
-    const _binDir = path.join(installDir, 'bin');
-    return IS_WINDOWS ? installDir : _binDir;
+    resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
+    const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
+    if (!isPyPyVersionSatisfies) {
+        installDir = null;
+        resolvedPyPyVersion = '';
+    }
+    else {
+        resolvedPythonVersion = getPyPyVersionFromPath(installDir);
+    }
+    return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-');
-    // check that versions[1] and versions[2]
-    // pypy-3.7
-    // pypy-3.7-vx
-    // TO-DO: should we print beatiful error message if versions parts are not semver or just throw exception
     if (versions.length < 2) {
         throw new Error('Please specify valid version Specification for PyPy.');
     }
@@ -1190,6 +1160,9 @@ function parsePyPyVersion(versionSpec) {
         pypyVersion: pypyVersion,
         pythonVersion: pythonVersion
     };
+}
+function getPyPyVersionFromPath(installDir) {
+    return path.parse(path.parse(installDir).dir).base;
 }
 
 
@@ -2574,8 +2547,8 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             let version = core.getInput('python-version');
-            const arch = core.getInput('architecture') || os.arch();
             if (version) {
+                const arch = core.getInput('architecture') || os.arch();
                 if (isPyPyVersion(version)) {
                     const installed = yield finderPyPy.findPyPyVersion(version, arch);
                     core.info(`Successfully setup PyPy ${installed.resolvedPyPyVersion} with Python (${installed.resolvedPythonVersion})`);
@@ -2743,7 +2716,7 @@ const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
 const IS_WINDOWS = process.platform === 'win32';
-const PYPY_VERSION = 'PYPY_VERSION';
+const PYPY_VERSION_FILE = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let downloadDir;
@@ -2758,7 +2731,6 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         core.info(`Download PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
-        // TO-DO: double check logs
         if (IS_WINDOWS) {
             downloadDir = yield tc.extractZip(pypyPath);
         }
@@ -2767,8 +2739,10 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const toolDir = path.join(downloadDir, archiveName);
         const installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
-        const pypyFilePath = path.join(installDir, PYPY_VERSION);
-        fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+        writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
+        const binaryPath = getPyPyBinaryPath(installDir);
+        yield createSymlinks(binaryPath, resolvedPythonVersion);
+        yield installPip(binaryPath);
         return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
     });
 }
@@ -2816,7 +2790,6 @@ function createSymlinks(pypyBinaryPath, pythonVersion) {
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
     });
 }
-exports.createSymlinks = createSymlinks;
 function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
@@ -2828,7 +2801,6 @@ function installPip(pythonLocation) {
         }
     });
 }
-exports.installPip = installPip;
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(item.pypy_version, pypyVersion) &&
@@ -2848,6 +2820,34 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         resolvedPythonVersion: foundRelease.python_version,
         resolvedPyPyVersion: foundRelease.pypy_version
     };
+}
+// helper functions
+/** Get PyPy binary location from the tool of installation directory
+ *  - On Linux and macOS, the Python interpreter is in 'bin'.
+ *  - On Windows, it is in the installation root.
+ */
+function getPyPyBinaryPath(installDir) {
+    const _binDir = path.join(installDir, 'bin');
+    return IS_WINDOWS ? installDir : _binDir;
+}
+exports.getPyPyBinaryPath = getPyPyBinaryPath;
+function readExactPyPyVersion(installDir) {
+    let pypyVersion = '';
+    let fileVersion = path.join(installDir, PYPY_VERSION_FILE);
+    if (fs.existsSync(fileVersion)) {
+        // PYPY_VERSION file contains version of PyPy. File was added because
+        // stable PyPy versions can have beta or alpha prerelease even if we donwload
+        // through official stable link. PYPY_VERSION create in time of image generation
+        // and hold version
+        pypyVersion = fs.readFileSync(fileVersion).toString();
+        core.debug(`Version from ${PYPY_VERSION_FILE} file is ${pypyVersion}`);
+    }
+    return pypyVersion;
+}
+exports.readExactPyPyVersion = readExactPyPyVersion;
+function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
+    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+    fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
 }
 
 

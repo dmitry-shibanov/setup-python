@@ -11,8 +11,8 @@ function isPyPyVersion(versionSpec: string) {
 async function run() {
   try {
     let version = core.getInput('python-version');
-    const arch: string = core.getInput('architecture') || os.arch();
     if (version) {
+      const arch: string = core.getInput('architecture') || os.arch();
       if (isPyPyVersion(version)) {
         const installed = await finderPyPy.findPyPyVersion(version, arch);
         core.info(
