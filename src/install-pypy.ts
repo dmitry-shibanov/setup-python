@@ -5,6 +5,7 @@ import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
 import * as fs from 'fs';
+import * as url from 'url';
 
 const IS_WINDOWS = process.platform === 'win32';
 const PYPY_VERSION = 'PYPY_VERSION';
@@ -46,8 +47,9 @@ export async function installPyPy(
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
-  let archiveName = foundAsset.filename.replace(/.zip|.tar.bz2/g, '');
   let downloadUrl = `${foundAsset.download_url}`;
+  let archive = url.parse(downloadUrl).pathname!.replace('/pypy/', '');
+  let archiveName = archive.replace(/.zip|.tar.bz2/g, '');
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
@@ -187,4 +189,9 @@ function findRelease(
     resolvedPythonVersion: foundRelease.python_version,
     resolvedPyPyVersion: foundRelease.pypy_version
   };
+}
+
+export function pythonVersionToSemantic(versionSpec: string) {
+  const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
+  return versionSpec.replace(prereleaseVersion, '$1-$2.$3');
 }

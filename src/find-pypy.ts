@@ -119,7 +119,7 @@ function getPyPyBinaryPath(installDir: string) {
   return IS_WINDOWS ? installDir : _binDir;
 }
 
-function parsePyPyVersion(versionSpec: string) {
+function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   const versions = versionSpec.split('-');
   // check that versions[1] and versions[2]
   // pypy-3.7
@@ -129,7 +129,9 @@ function parsePyPyVersion(versionSpec: string) {
     throw new Error('Please specify valid version Specification for PyPy.');
   }
   const pythonVersion = new semver.Range(versions[1]);
-  const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
+  const pypyVersion = new semver.Range(
+    versions.length > 2 ? pypyInstall.pythonVersionToSemantic(versions[2]) : 'x'
+  );
 
   return {
     pypyVersion: pypyVersion,

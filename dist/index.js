@@ -1185,7 +1185,7 @@ function parsePyPyVersion(versionSpec) {
         throw new Error('Please specify valid version Specification for PyPy.');
     }
     const pythonVersion = new semver.Range(versions[1]);
-    const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
+    const pypyVersion = new semver.Range(versions.length > 2 ? pypyInstall.pythonVersionToSemantic(versions[2]) : 'x');
     return {
         pypyVersion: pypyVersion,
         pythonVersion: pythonVersion
@@ -2742,6 +2742,7 @@ const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
+const url = __importStar(__webpack_require__(835));
 const IS_WINDOWS = process.platform === 'win32';
 const PYPY_VERSION = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
@@ -2753,8 +2754,9 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
             throw new Error(`The specifyed release with pypy version ${pypyVersion.raw} and python version ${pythonVersion.raw} was not found`);
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
-        let archiveName = foundAsset.filename.replace(/.zip|.tar.bz2/g, '');
         let downloadUrl = `${foundAsset.download_url}`;
+        let archive = url.parse(downloadUrl).pathname.replace('/pypy/', '');
+        let archiveName = archive.replace(/.zip|.tar.bz2/g, '');
         core.info(`Download PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
@@ -2849,6 +2851,11 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         resolvedPyPyVersion: foundRelease.pypy_version
     };
 }
+function pythonVersionToSemantic(versionSpec) {
+    const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
+    return versionSpec.replace(prereleaseVersion, '$1-$2.$3');
+}
+exports.pythonVersionToSemantic = pythonVersionToSemantic;
 
 
 /***/ }),
