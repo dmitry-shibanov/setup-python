@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as url from 'url';
 
 const IS_WINDOWS = process.platform === 'win32';
-const PYPY_VERSION = 'PYPY_VERSION';
+const PYPY_VERSION_FILE = 'PYPY_VERSION';
 
 interface IPyPyManifestAsset {
   filename: string;
@@ -41,7 +41,10 @@ export async function installPyPy(
   );
 
   if (!releaseData || !releaseData.foundAsset) {
-    throw new Error(`The specifyed release for PyPy version was not found`);
+    const version = getPyPySemverVersion(pypyVersion);
+    throw new Error(
+      `PyPy version ${pythonVersion.raw} (${version}) with arch ${architecture} not found`
+    );
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
@@ -52,7 +55,6 @@ export async function installPyPy(
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
 
-  // TO-DO: double check logs
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
@@ -78,8 +80,12 @@ export async function installPyPy(
     );
   }
 
-  const pypyFilePath = path.join(installDir, PYPY_VERSION);
-  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+  writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
+
+  const binaryPath = getPyPyBinaryPath(installDir);
+  await createPyPySymlink(binaryPath, resolvedPythonVersion);
+
+  await installPip(binaryPath);
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
@@ -91,27 +97,14 @@ async function getAvailablePyPyVersions() {
   const response = await http.getJson<IPyPyManifestRelease[]>(url);
   if (!response.result) {
     throw new Error(
-      `Unable to retrieve the list of available versions from '${url}'`
+      `Unable to retrieve the list of available PyPy versions from '${url}'`
     );
   }
 
   return response.result;
 }
 
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-// input-pypy.ts
-
-function createSymlink(sourcePath: string, targetPath: string) {
-  if (fs.existsSync(targetPath)) {
-    return;
-  }
-  fs.symlinkSync(sourcePath, targetPath);
-}
-
-export async function createSymlinks(
+async function createPyPySymlink(
   pypyBinaryPath: string,
   pythonVersion: string
 ) {
@@ -121,33 +114,33 @@ export async function createSymlinks(
 
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
   const pythonLocation = path.join(pypyBinaryPath, 'python');
-  const pypyLocation = path.join(pypyBinaryPath, 'pypy');
+  const pypyLocation = path.join(
+    pypyBinaryPath,
+    `pypy${pypyBinaryPostfix}${binaryExtension}`
+  );
+  const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
 
   createSymlink(
-    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
-    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}` // python3 or python
+    pypyLocation,
+    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
-  // To-Do
-  createSymlink(
-    `${pypyLocation}${pypyBinaryPostfix}${binaryExtension}`, //pypy3 or pypy
-    `${pypyLocation}${binaryExtension}` // pypy
-  );
-  createSymlink(
-    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`, // python3 or python
-    `${pythonLocation}${binaryExtension}` // python
-  );
+
+  createSymlink(pypyLocation, pypySimlink);
+  createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
 
   await exec.exec(
     `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
 }
 
-export async function installPip(pythonLocation: string) {
+async function installPip(pythonLocation: string) {
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
   );
   if (IS_WINDOWS) {
+    // Create symlink separatelly from createPyPySymlink, because
+    // Scripts folder had not existed before installation of pip.
     const binPath = path.join(pythonLocation, 'bin');
     const scriptPath = path.join(pythonLocation, 'Scripts');
     fs.symlinkSync(scriptPath, binPath);
@@ -165,7 +158,7 @@ function findRelease(
       item =>
         semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(
-          pythonVersionToSemantic(item.pypy_version),
+          pypyVersionToSemantic(item.pypy_version),
           pypyVersion
         ) &&
         item.files.some(
@@ -181,8 +174,8 @@ function findRelease(
     const sortedReleases = filterReleases.sort((previous, current) => {
       return (
         semver.compare(
-          semver.coerce(pythonVersionToSemantic(current.pypy_version))!,
-          semver.coerce(pythonVersionToSemantic(previous.pypy_version))!
+          semver.coerce(pypyVersionToSemantic(current.pypy_version))!,
+          semver.coerce(pypyVersionToSemantic(previous.pypy_version))!
         ) ||
         semver.compare(
           semver.coerce(current.python_version)!,
@@ -230,7 +223,64 @@ function findRelease(
   }
 }
 
-export function pythonVersionToSemantic(versionSpec: string) {
+// helper functions
+
+/**
+ * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
+ * There is no easy way to determine what PyPy version is located in specific folder
+ * 'pypy --version' is not reliable enough since it is not set properly for preview versions
+ * "7.3.3rc1" is marked as '7.3.3' in 'pypy --version'
+ * so we put PYPY_VERSION file to PyPy directory when install it to VM and read it when we need to know version
+ * PYPY_VERSION contains exact version from 'versions.json'
+ */
+export function readExactPyPyVersion(installDir: string) {
+  let pypyVersion = '';
+  let fileVersion = path.join(installDir, PYPY_VERSION_FILE);
+  if (fs.existsSync(fileVersion)) {
+    pypyVersion = fs.readFileSync(fileVersion).toString();
+    core.debug(`Version from ${PYPY_VERSION_FILE} file is ${pypyVersion}`);
+  }
+
+  return pypyVersion;
+}
+
+function writeExactPyPyVersionFile(
+  installDir: string,
+  resolvedPyPyVersion: string
+) {
+  const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+  fs.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+}
+
+/** Get PyPy binary location from the tool of installation directory
+ *  - On Linux and macOS, the Python interpreter is in 'bin'.
+ *  - On Windows, it is in the installation root.
+ */
+export function getPyPyBinaryPath(installDir: string) {
+  const _binDir = path.join(installDir, 'bin');
+  return IS_WINDOWS ? installDir : _binDir;
+}
+
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+function createSymlink(sourcePath: string, targetPath: string) {
+  if (fs.existsSync(targetPath)) {
+    return;
+  }
+  fs.symlinkSync(sourcePath, targetPath);
+}
+
+export function pypyVersionToSemantic(versionSpec: string) {
   const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
   return versionSpec.replace(prereleaseVersion, '$1-$2.$3');
+}
+
+export function getPyPySemverVersion(pypyVersion: semver.Range | string) {
+  if (typeof pypyVersion === 'string') {
+    return pypyVersion;
+  }
+
+  return pypyVersion.raw;
 }
