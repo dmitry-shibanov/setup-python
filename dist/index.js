@@ -1136,6 +1136,8 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     let resolvedPythonVersion = '';
     let installDir = tc.find('PyPy', pythonVersion.raw, architecture);
     if (installDir) {
+        // 'tc.find' finds tool based on Python version but we also need to check
+        // whether PyPy version satisfies requested version.
         resolvedPythonVersion = getPyPyVersionFromPath(installDir);
         resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
         const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
@@ -1152,7 +1154,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-');
     if (versions.length < 2) {
-        throw new Error("Input version property for PyPy version should be specifyed as 'pypy-<python-version>'");
+        throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples.");
     }
     const pythonVersion = new semver.Range(versions[1]);
     const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
@@ -2758,17 +2760,6 @@ function getAvailablePyPyVersions() {
         return response.result;
     });
 }
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-// input-pypy.ts
-function createSymlink(sourcePath, targetPath) {
-    if (fs.existsSync(targetPath)) {
-        return;
-    }
-    fs.symlinkSync(sourcePath, targetPath);
-}
 function createPyPySymlink(pypyBinaryPath, pythonVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const version = semver.coerce(pythonVersion);
@@ -2849,6 +2840,16 @@ function getPyPyBinaryPath(installDir) {
     return IS_WINDOWS ? installDir : _binDir;
 }
 exports.getPyPyBinaryPath = getPyPyBinaryPath;
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+function createSymlink(sourcePath, targetPath) {
+    if (fs.existsSync(targetPath)) {
+        return;
+    }
+    fs.symlinkSync(sourcePath, targetPath);
+}
 
 
 /***/ }),

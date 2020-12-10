@@ -91,19 +91,6 @@ async function getAvailablePyPyVersions() {
   return response.result;
 }
 
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-// input-pypy.ts
-
-function createSymlink(sourcePath: string, targetPath: string) {
-  if (fs.existsSync(targetPath)) {
-    return;
-  }
-  fs.symlinkSync(sourcePath, targetPath);
-}
-
 async function createPyPySymlink(
   pypyBinaryPath: string,
   pythonVersion: string
@@ -228,4 +215,15 @@ function writeExactPyPyVersionFile(
 export function getPyPyBinaryPath(installDir: string) {
   const _binDir = path.join(installDir, 'bin');
   return IS_WINDOWS ? installDir : _binDir;
+}
+
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+function createSymlink(sourcePath: string, targetPath: string) {
+  if (fs.existsSync(targetPath)) {
+    return;
+  }
+  fs.symlinkSync(sourcePath, targetPath);
 }

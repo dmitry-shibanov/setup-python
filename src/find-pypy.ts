@@ -71,6 +71,8 @@ function findPyPyToolCache(
   );
 
   if (installDir) {
+    // 'tc.find' finds tool based on Python version but we also need to check
+    // whether PyPy version satisfies requested version.
     resolvedPythonVersion = getPyPyVersionFromPath(installDir);
     resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
 
@@ -98,7 +100,7 @@ function parsePyPyVersion(versionSpec: string) {
 
   if (versions.length < 2) {
     throw new Error(
-      "Input version property for PyPy version should be specifyed as 'pypy-<python-version>'"
+      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
     );
   }
   const pythonVersion = new semver.Range(versions[1]);
