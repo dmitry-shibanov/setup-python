@@ -1109,8 +1109,6 @@ function findPyPyVersion(versionSpec, architecture) {
         let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
         // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
-        // On our Windows virtual environments, we only install an x86 version.
-        // Fall back to x86.
         if (IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
         }
@@ -2749,7 +2747,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         const archiveName = fs.readdirSync(downloadDir)[0];
         const toolDir = path.join(downloadDir, archiveName);
         let installDir = toolDir;
-        if (resolvedPyPyVersion !== 'nightly') {
+        if (!isNightlyKeyword(resolvedPyPyVersion)) {
             installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
         }
         writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
@@ -2791,7 +2789,7 @@ function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         core.info('Installing and updating pip');
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
-        // TO-Do should we skip updating of pip ?
+        // TO-DO should we skip updating of pip ?
         yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
         if (IS_WINDOWS) {
             // Create symlink separatelly from createPyPySymlink, because
@@ -2802,30 +2800,14 @@ function installPip(pythonLocation) {
         }
     });
 }
-function findNightlyRelease(releases, pythonVersion, architecture) {
-    const foundReleases = releases.filter(item => {
-        const semverPython = semver.coerce(item.python_version);
-        return (item.pypy_version === 'nightly' &&
-            semver.satisfies(semverPython, pythonVersion) &&
-            item.files.some(file => file.arch === architecture && file.platform === process.platform));
-    });
-    if (foundReleases.length === 0) {
-        return null;
-    }
-    const foundAsset = foundReleases[0].files.find(item => item.arch === architecture && item.platform === process.platform);
-    return {
-        foundAsset,
-        resolvedPythonVersion: foundReleases[0].python_version,
-        resolvedPyPyVersion: foundReleases[0].pypy_version
-    };
-}
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    if (isNightlyKeyword(pypyVersion)) {
-        return findNightlyRelease(releases, pythonVersion, architecture);
-    }
-    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-        semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
-        item.files.some(file => file.arch === architecture && file.platform === process.platform));
+    const filterReleases = releases.filter(item => {
+        const isPythonVersionSatisfies = semver.satisfies(semver.coerce(item.python_version), pythonVersion);
+        const isPyPyNightly = isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
+        const isPyPyVersionSatisfies = isPyPyNightly || semver.satisfies(item.pypy_version, pypyVersion);
+        const isArchExists = item.files.some(file => file.arch === architecture && file.platform === process.platform);
+        return isPythonVersionSatisfies && isPyPyVersionSatisfies && isArchExists;
+    });
     if (filterReleases.length === 0) {
         return null;
     }

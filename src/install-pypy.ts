@@ -50,6 +50,7 @@ export async function installPyPy(
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
+
   core.info('Extract downloaded archive');
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
@@ -63,7 +64,7 @@ export async function installPyPy(
 
   const toolDir = path.join(downloadDir, archiveName);
   let installDir = toolDir;
-  if (resolvedPyPyVersion !== 'nightly') {
+  if (!isNightlyKeyword(resolvedPyPyVersion)) {
     installDir = await tc.cacheDir(
       toolDir,
       'PyPy',
@@ -76,7 +77,6 @@ export async function installPyPy(
 
   const binaryPath = getPyPyBinaryPath(installDir);
   await createPyPySymlink(binaryPath, resolvedPythonVersion);
-
   await installPip(binaryPath);
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
@@ -128,10 +128,11 @@ async function createPyPySymlink(
 async function installPip(pythonLocation: string) {
   core.info('Installing and updating pip');
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
-  // TO-Do should we skip updating of pip ?
+  // TO-DO should we skip updating of pip ?
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
   );
+
   if (IS_WINDOWS) {
     // Create symlink separatelly from createPyPySymlink, because
     // Scripts folder had not existed before installation of pip.
@@ -141,55 +142,26 @@ async function installPip(pythonLocation: string) {
   }
 }
 
-function findNightlyRelease(
-  releases: IPyPyManifestRelease[],
-  pythonVersion: string,
-  architecture: string
-) {
-  const foundReleases = releases.filter(item => {
-    const semverPython = semver.coerce(item.python_version)!;
-    return (
-      item.pypy_version === 'nightly' &&
-      semver.satisfies(semverPython, pythonVersion) &&
-      item.files.some(
-        file => file.arch === architecture && file.platform === process.platform
-      )
-    );
-  });
-
-  if (foundReleases.length === 0) {
-    return null;
-  }
-
-  const foundAsset = foundReleases[0].files.find(
-    item => item.arch === architecture && item.platform === process.platform
-  );
-
-  return {
-    foundAsset,
-    resolvedPythonVersion: foundReleases[0].python_version,
-    resolvedPyPyVersion: foundReleases[0].pypy_version
-  };
-}
-
 function findRelease(
   releases: IPyPyManifestRelease[],
   pythonVersion: string,
   pypyVersion: string,
   architecture: string
 ) {
-  if (isNightlyKeyword(pypyVersion)) {
-    return findNightlyRelease(releases, pythonVersion, architecture);
-  }
-
-  const filterReleases = releases.filter(
-    item =>
-      semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
-      item.files.some(
-        file => file.arch === architecture && file.platform === process.platform
-      )
-  );
+  const filterReleases = releases.filter(item => {
+    const isPythonVersionSatisfies = semver.satisfies(
+      semver.coerce(item.python_version)!,
+      pythonVersion
+    );
+    const isPyPyNightly =
+      isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
+    const isPyPyVersionSatisfies =
+      isPyPyNightly || semver.satisfies(item.pypy_version, pypyVersion);
+    const isArchExists = item.files.some(
+      file => file.arch === architecture && file.platform === process.platform
+    );
+    return isPythonVersionSatisfies && isPyPyVersionSatisfies && isArchExists;
+  });
 
   if (filterReleases.length === 0) {
     return null;

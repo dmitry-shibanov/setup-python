@@ -23,8 +23,6 @@ export async function findPyPyVersion(
   const pypyVersionSpec = parsePyPyVersion(versionSpec);
 
   // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
-  // On our Windows virtual environments, we only install an x86 version.
-  // Fall back to x86.
   if (IS_WINDOWS && architecture === 'x64') {
     architecture = 'x86';
   }
