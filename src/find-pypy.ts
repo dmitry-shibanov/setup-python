@@ -9,7 +9,7 @@ const IS_WINDOWS = process.platform === 'win32';
 
 interface IPyPyVersionSpec {
   pypyVersion: string;
-  pythonVersion: semver.Range;
+  pythonVersion: string;
 }
 
 export async function findPyPyVersion(
@@ -57,17 +57,13 @@ export async function findPyPyVersion(
 }
 
 function findPyPyToolCache(
-  pythonVersion: semver.Range,
+  pythonVersion: string,
   pypyVersion: string,
   architecture: string
 ) {
   let resolvedPyPyVersion = '';
   let resolvedPythonVersion = '';
-  let installDir: string | null = tc.find(
-    'PyPy',
-    pythonVersion.raw,
-    architecture
-  );
+  let installDir: string | null = tc.find('PyPy', pythonVersion, architecture);
 
   if (installDir) {
     // 'tc.find' finds tool based on Python version but we also need to check
@@ -87,7 +83,7 @@ function findPyPyToolCache(
 
   if (!installDir) {
     core.info(
-      `PyPy version ${pythonVersion.raw} (${pypyVersion}) was not found in the local cache`
+      `PyPy version ${pythonVersion} (${pypyVersion}) was not found in the local cache`
     );
   }
 
@@ -102,15 +98,12 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
     );
   }
-  const pythonVersion = new semver.Range(versions[1]);
+  const pythonVersion = versions[1];
   let pypyVersion: string;
   if (versions.length > 2) {
-    pypyVersion =
-      versions[2] === 'nightly'
-        ? 'nightly'
-        : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2])).raw;
+    pypyVersion = pypyInstall.pypyVersionToSemantic(versions[2]);
   } else {
-    pypyVersion = new semver.Range('x').raw;
+    pypyVersion = 'x';
   }
 
   return {

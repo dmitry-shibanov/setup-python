@@ -27,7 +27,7 @@ interface IPyPyManifestRelease {
 
 export async function installPyPy(
   pypyVersion: string,
-  pythonVersion: semver.Range,
+  pythonVersion: string,
   architecture: string
 ) {
   let downloadDir;
@@ -42,31 +42,24 @@ export async function installPyPy(
 
   if (!releaseData || !releaseData.foundAsset) {
     throw new Error(
-      `PyPy version ${pythonVersion.raw} (${pypyVersion}) with arch ${architecture} not found`
+      `PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`
     );
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
   let downloadUrl = `${foundAsset.download_url}`;
-  let archiveName;
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
-
   if (IS_WINDOWS) {
-    downloadDir = await tc.extractZip(pypyPath);
+    downloadDir = await tc.extractZip(pypyPath, undefined);
   } else {
     downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
 
-  if (resolvedPyPyVersion === 'nightly') {
-    const dirContent = fs.readdirSync(downloadDir);
-    archiveName = dirContent.find(item => item.startsWith('pypy-c'))!;
-  } else {
-    let archive = url.parse(downloadUrl).pathname!.replace('/pypy/', '');
-    archiveName = archive.replace(/.zip|.tar.bz2/g, '');
-  }
+  const dirContent = fs.readdirSync(downloadDir);
+  let archiveName = dirContent[0];
 
   const toolDir = path.join(downloadDir, archiveName);
   let installDir = toolDir;
@@ -148,7 +141,7 @@ async function installPip(pythonLocation: string) {
 
 function findNigthlyRelease(
   releases: IPyPyManifestRelease[],
-  pythonVersion: semver.Range,
+  pythonVersion: string,
   architecture: string
 ) {
   const foundRelease = releases.filter(item => {
@@ -179,7 +172,7 @@ function findNigthlyRelease(
 
 function findRelease(
   releases: IPyPyManifestRelease[],
-  pythonVersion: semver.Range,
+  pythonVersion: string,
   pypyVersion: string,
   architecture: string
 ) {

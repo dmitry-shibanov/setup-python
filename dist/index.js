@@ -1134,7 +1134,7 @@ exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     let resolvedPyPyVersion = '';
     let resolvedPythonVersion = '';
-    let installDir = tc.find('PyPy', pythonVersion.raw, architecture);
+    let installDir = tc.find('PyPy', pythonVersion, architecture);
     if (installDir) {
         // 'tc.find' finds tool based on Python version but we also need to check
         // whether PyPy version satisfies requested version.
@@ -1147,7 +1147,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
         }
     }
     if (!installDir) {
-        core.info(`PyPy version ${pythonVersion.raw} (${pypyVersion}) was not found in the local cache`);
+        core.info(`PyPy version ${pythonVersion} (${pypyVersion}) was not found in the local cache`);
     }
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
@@ -1156,16 +1156,13 @@ function parsePyPyVersion(versionSpec) {
     if (versions.length < 2) {
         throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples.");
     }
-    const pythonVersion = new semver.Range(versions[1]);
+    const pythonVersion = versions[1];
     let pypyVersion;
     if (versions.length > 2) {
-        pypyVersion =
-            versions[2] === 'nightly'
-                ? 'nightly'
-                : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2])).raw;
+        pypyVersion = pypyInstall.pypyVersionToSemantic(versions[2]);
     }
     else {
-        pypyVersion = new semver.Range('x').raw;
+        pypyVersion = 'x';
     }
     return {
         pypyVersion: pypyVersion,
@@ -2726,7 +2723,6 @@ const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
-const url = __importStar(__webpack_require__(835));
 const IS_WINDOWS = process.platform === 'win32';
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
@@ -2735,28 +2731,21 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         const releases = yield getAvailablePyPyVersions();
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            throw new Error(`PyPy version ${pythonVersion.raw} (${pypyVersion}) with arch ${architecture} not found`);
+            throw new Error(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
-        let archiveName;
         core.info(`Download PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
         if (IS_WINDOWS) {
-            downloadDir = yield tc.extractZip(pypyPath);
+            downloadDir = yield tc.extractZip(pypyPath, undefined);
         }
         else {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
-        if (resolvedPyPyVersion === 'nightly') {
-            const dirContent = fs.readdirSync(downloadDir);
-            archiveName = dirContent.find(item => item.startsWith('pypy-c'));
-        }
-        else {
-            let archive = url.parse(downloadUrl).pathname.replace('/pypy/', '');
-            archiveName = archive.replace(/.zip|.tar.bz2/g, '');
-        }
+        const dirContent = fs.readdirSync(downloadDir);
+        let archiveName = dirContent[0];
         const toolDir = path.join(downloadDir, archiveName);
         let installDir = toolDir;
         if (resolvedPyPyVersion !== 'nightly') {
