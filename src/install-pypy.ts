@@ -25,8 +25,8 @@ interface IPyPyManifestRelease {
 }
 
 export async function installPyPy(
-  pypyVersion: semver.Range,
-  pythonVersion: semver.Range,
+  pypyVersion: string,
+  pythonVersion: string,
   architecture: string
 ) {
   let downloadDir;
@@ -41,31 +41,36 @@ export async function installPyPy(
 
   if (!releaseData || !releaseData.foundAsset) {
     throw new Error(
-      `PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) with arch ${architecture} not found`
+      `PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`
     );
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
-  let archiveName = foundAsset.filename.replace(/.zip|.tar.bz2/g, '');
   let downloadUrl = `${foundAsset.download_url}`;
 
   core.info(`Download PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
   core.info('Extract downloaded archive');
-
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
     downloadDir = await tc.extractTar(pypyPath, undefined, 'x');
   }
 
-  const toolDir = path.join(downloadDir, archiveName!);
-  const installDir = await tc.cacheDir(
-    toolDir,
-    'PyPy',
-    resolvedPythonVersion,
-    architecture
-  );
+  // root folder in archive can have unpredictable name so just take the first folder
+  // downloadDir is unique folder under TEMP and can't contain any other folders
+  const archiveName = fs.readdirSync(downloadDir)[0];
+
+  const toolDir = path.join(downloadDir, archiveName);
+  let installDir = toolDir;
+  if (resolvedPyPyVersion !== 'nightly') {
+    installDir = await tc.cacheDir(
+      toolDir,
+      'PyPy',
+      resolvedPythonVersion,
+      architecture
+    );
+  }
 
   writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
 
@@ -106,7 +111,7 @@ async function createPyPySymlink(
     `pypy${pypyBinaryPostfix}${binaryExtension}`
   );
   const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
-
+  core.info('Create symlinks');
   createSymlink(
     pypyLocation,
     `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
@@ -121,6 +126,7 @@ async function createPyPySymlink(
 }
 
 async function installPip(pythonLocation: string) {
+  core.info('Installing and updating pip');
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
@@ -134,16 +140,51 @@ async function installPip(pythonLocation: string) {
   }
 }
 
-function findRelease(
+function findNightlyRelease(
   releases: IPyPyManifestRelease[],
-  pythonVersion: semver.Range,
-  pypyVersion: semver.Range,
+  pythonVersion: string,
   architecture: string
 ) {
+  const foundReleases = releases.filter(item => {
+    const semverPython = semver.coerce(item.python_version)!;
+    return (
+      item.pypy_version === 'nightly' &&
+      semver.satisfies(semverPython, pythonVersion) &&
+      item.files.some(
+        file => file.arch === architecture && file.platform === process.platform
+      )
+    );
+  });
+
+  if (foundReleases.length === 0) {
+    return null;
+  }
+
+  const foundAsset = foundReleases[0].files.find(
+    item => item.arch === architecture && item.platform === process.platform
+  );
+
+  return {
+    foundAsset,
+    resolvedPythonVersion: foundReleases[0].python_version,
+    resolvedPyPyVersion: foundReleases[0].pypy_version
+  };
+}
+
+function findRelease(
+  releases: IPyPyManifestRelease[],
+  pythonVersion: string,
+  pypyVersion: string,
+  architecture: string
+) {
+  if (isNightlyKeyword(pypyVersion)) {
+    return findNightlyRelease(releases, pythonVersion, architecture);
+  }
+
   const filterReleases = releases.filter(
     item =>
       semver.satisfies(item.python_version, pythonVersion) &&
-      semver.satisfies(item.pypy_version, pypyVersion) &&
+      semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
       item.files.some(
         file => file.arch === architecture && file.platform === process.platform
       )
@@ -153,12 +194,11 @@ function findRelease(
     return null;
   }
 
-  // double check coerce
   const sortedReleases = filterReleases.sort((previous, current) => {
     return (
       semver.compare(
-        semver.coerce(current.pypy_version)!,
-        semver.coerce(previous.pypy_version)!
+        semver.coerce(pypyVersionToSemantic(current.pypy_version))!,
+        semver.coerce(pypyVersionToSemantic(previous.pypy_version))!
       ) ||
       semver.compare(
         semver.coerce(current.python_version)!,
@@ -226,4 +266,13 @@ function createSymlink(sourcePath: string, targetPath: string) {
     return;
   }
   fs.symlinkSync(sourcePath, targetPath);
+}
+
+function isNightlyKeyword(pypyVersion: string) {
+  return pypyVersion === 'nightly';
+}
+
+export function pypyVersionToSemantic(versionSpec: string) {
+  const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
+  return versionSpec.replace(prereleaseVersion, '$1-$2.$3');
 }

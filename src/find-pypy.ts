@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as pypyInstall from './install-pypy';
-import * as fs from 'fs';
 
 import * as semver from 'semver';
 import * as core from '@actions/core';
@@ -9,8 +8,8 @@ import * as tc from '@actions/tool-cache';
 const IS_WINDOWS = process.platform === 'win32';
 
 interface IPyPyVersionSpec {
-  pypyVersion: semver.Range;
-  pythonVersion: semver.Range;
+  pypyVersion: string;
+  pythonVersion: string;
 }
 
 export async function findPyPyVersion(
@@ -58,17 +57,13 @@ export async function findPyPyVersion(
 }
 
 function findPyPyToolCache(
-  pythonVersion: semver.Range,
-  pypyVersion: semver.Range,
+  pythonVersion: string,
+  pypyVersion: string,
   architecture: string
 ) {
   let resolvedPyPyVersion = '';
   let resolvedPythonVersion = '';
-  let installDir: string | null = tc.find(
-    'PyPy',
-    pythonVersion.raw,
-    architecture
-  );
+  let installDir: string | null = tc.find('PyPy', pythonVersion, architecture);
 
   if (installDir) {
     // 'tc.find' finds tool based on Python version but we also need to check
@@ -88,14 +83,14 @@ function findPyPyToolCache(
 
   if (!installDir) {
     core.info(
-      `PyPy version ${pythonVersion.raw} (${pypyVersion.raw}) was not found in the local cache`
+      `PyPy version ${pythonVersion} (${pypyVersion}) was not found in the local cache`
     );
   }
 
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
 
-function parsePyPyVersion(versionSpec: string) {
+function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   const versions = versionSpec.split('-');
 
   if (versions.length < 2) {
@@ -103,8 +98,13 @@ function parsePyPyVersion(versionSpec: string) {
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
     );
   }
-  const pythonVersion = new semver.Range(versions[1]);
-  const pypyVersion = new semver.Range(versions.length > 2 ? versions[2] : 'x');
+  const pythonVersion = versions[1];
+  let pypyVersion: string;
+  if (versions.length > 2) {
+    pypyVersion = pypyInstall.pypyVersionToSemantic(versions[2]);
+  } else {
+    pypyVersion = 'x';
+  }
 
   return {
     pypyVersion: pypyVersion,
