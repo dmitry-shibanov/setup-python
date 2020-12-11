@@ -1147,8 +1147,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
         }
     }
     if (!installDir) {
-        const version = pypyInstall.getPyPySemverVersion(pypyVersion);
-        core.info(`PyPy version ${pythonVersion.raw} (${version}) was not found in the local cache`);
+        core.info(`PyPy version ${pythonVersion.raw} (${pypyVersion}) was not found in the local cache`);
     }
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
@@ -1163,10 +1162,10 @@ function parsePyPyVersion(versionSpec) {
         pypyVersion =
             versions[2] === 'nightly'
                 ? 'nightly'
-                : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2]));
+                : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2])).raw;
     }
     else {
-        pypyVersion = new semver.Range('x');
+        pypyVersion = new semver.Range('x').raw;
     }
     return {
         pypyVersion: pypyVersion,
@@ -2736,8 +2735,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         const releases = yield getAvailablePyPyVersions();
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            const version = getPyPySemverVersion(pypyVersion);
-            throw new Error(`PyPy version ${pythonVersion.raw} (${version}) with arch ${architecture} not found`);
+            throw new Error(`PyPy version ${pythonVersion.raw} (${pypyVersion}) with arch ${architecture} not found`);
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
@@ -2811,43 +2809,44 @@ function installPip(pythonLocation) {
         }
     });
 }
-function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    if (pypyVersion.toString() !== 'nightly') {
-        const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
-            semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
+function findNigthlyRelease(releases, pythonVersion, architecture) {
+    const foundRelease = releases.filter(item => {
+        const semverPython = semver.coerce(item.python_version);
+        return (item.pypy_version === 'nightly' &&
+            semver.satisfies(semverPython, pythonVersion) &&
             item.files.some(file => file.arch === architecture && file.platform === process.platform));
-        if (filterReleases.length === 0) {
-            return null;
-        }
-        const sortedReleases = filterReleases.sort((previous, current) => {
-            return (semver.compare(semver.coerce(pypyVersionToSemantic(current.pypy_version)), semver.coerce(pypyVersionToSemantic(previous.pypy_version))) ||
-                semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
-        });
-        const foundRelease = sortedReleases[0];
-        const foundAsset = foundRelease.files.find(item => item.arch === architecture && item.platform === process.platform);
-        return {
-            foundAsset,
-            resolvedPythonVersion: foundRelease.python_version,
-            resolvedPyPyVersion: foundRelease.pypy_version
-        };
+    });
+    if (foundRelease.length === 0) {
+        return null;
     }
-    else {
-        const foundRelease = releases.filter(item => {
-            const semverPython = semver.coerce(item.python_version);
-            return (item.pypy_version === 'nightly' &&
-                semver.satisfies(semverPython, pythonVersion) &&
-                item.files.some(file => file.arch === architecture && file.platform === process.platform));
-        });
-        if (foundRelease.length === 0) {
-            return null;
-        }
-        const foundAsset = foundRelease[0].files.find(item => item.arch === architecture && item.platform === process.platform);
-        return {
-            foundAsset,
-            resolvedPythonVersion: foundRelease[0].python_version,
-            resolvedPyPyVersion: foundRelease[0].pypy_version
-        };
+    const foundAsset = foundRelease[0].files.find(item => item.arch === architecture && item.platform === process.platform);
+    return {
+        foundAsset,
+        resolvedPythonVersion: foundRelease[0].python_version,
+        resolvedPyPyVersion: foundRelease[0].pypy_version
+    };
+}
+function findRelease(releases, pythonVersion, pypyVersion, architecture) {
+    if (pypyVersion === 'nightly') {
+        return findNigthlyRelease(releases, pythonVersion, architecture);
     }
+    const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
+        semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
+        item.files.some(file => file.arch === architecture && file.platform === process.platform));
+    if (filterReleases.length === 0) {
+        return null;
+    }
+    const sortedReleases = filterReleases.sort((previous, current) => {
+        return (semver.compare(semver.coerce(pypyVersionToSemantic(current.pypy_version)), semver.coerce(pypyVersionToSemantic(previous.pypy_version))) ||
+            semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
+    });
+    const foundRelease = sortedReleases[0];
+    const foundAsset = foundRelease.files.find(item => item.arch === architecture && item.platform === process.platform);
+    return {
+        foundAsset,
+        resolvedPythonVersion: foundRelease.python_version,
+        resolvedPyPyVersion: foundRelease.pypy_version
+    };
 }
 // helper functions
 /**
@@ -2896,13 +2895,6 @@ function pypyVersionToSemantic(versionSpec) {
     return versionSpec.replace(prereleaseVersion, '$1-$2.$3');
 }
 exports.pypyVersionToSemantic = pypyVersionToSemantic;
-function getPyPySemverVersion(pypyVersion) {
-    if (typeof pypyVersion === 'string') {
-        return pypyVersion;
-    }
-    return pypyVersion.raw;
-}
-exports.getPyPySemverVersion = getPyPySemverVersion;
 
 
 /***/ }),

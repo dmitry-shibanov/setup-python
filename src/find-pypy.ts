@@ -8,7 +8,7 @@ import * as tc from '@actions/tool-cache';
 const IS_WINDOWS = process.platform === 'win32';
 
 interface IPyPyVersionSpec {
-  pypyVersion: semver.Range | string;
+  pypyVersion: string;
   pythonVersion: semver.Range;
 }
 
@@ -58,7 +58,7 @@ export async function findPyPyVersion(
 
 function findPyPyToolCache(
   pythonVersion: semver.Range,
-  pypyVersion: semver.Range | string,
+  pypyVersion: string,
   architecture: string
 ) {
   let resolvedPyPyVersion = '';
@@ -86,9 +86,8 @@ function findPyPyToolCache(
   }
 
   if (!installDir) {
-    const version = pypyInstall.getPyPySemverVersion(pypyVersion);
     core.info(
-      `PyPy version ${pythonVersion.raw} (${version}) was not found in the local cache`
+      `PyPy version ${pythonVersion.raw} (${pypyVersion}) was not found in the local cache`
     );
   }
 
@@ -104,14 +103,14 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
     );
   }
   const pythonVersion = new semver.Range(versions[1]);
-  let pypyVersion: semver.Range | string;
+  let pypyVersion: string;
   if (versions.length > 2) {
     pypyVersion =
       versions[2] === 'nightly'
         ? 'nightly'
-        : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2]));
+        : new semver.Range(pypyInstall.pypyVersionToSemantic(versions[2])).raw;
   } else {
-    pypyVersion = new semver.Range('x');
+    pypyVersion = new semver.Range('x').raw;
   }
 
   return {
