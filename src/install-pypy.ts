@@ -150,7 +150,7 @@ function findRelease(
 ) {
   const filterReleases = releases.filter(item => {
     const isPythonVersionSatisfies = semver.satisfies(
-      semver.coerce(item.python_version)!,
+      semver.coerce(pypyVersionToSemantic(item.python_version))!,
       pythonVersion
     );
     const isPyPyNightly =
