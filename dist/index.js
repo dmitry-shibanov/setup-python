@@ -2739,13 +2739,14 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         const pypyPath = yield tc.downloadTool(downloadUrl);
         core.info('Extract downloaded archive');
         if (IS_WINDOWS) {
-            downloadDir = yield tc.extractZip(pypyPath, undefined);
+            downloadDir = yield tc.extractZip(pypyPath);
         }
         else {
             downloadDir = yield tc.extractTar(pypyPath, undefined, 'x');
         }
-        const dirContent = fs.readdirSync(downloadDir);
-        let archiveName = dirContent[0];
+        // root folder in archive can have unpredictable name so just take the first folder
+        // downloadDir is unique folder under TEMP and can't contain any other folders
+        const archiveName = fs.readdirSync(downloadDir)[0];
         const toolDir = path.join(downloadDir, archiveName);
         let installDir = toolDir;
         if (resolvedPyPyVersion !== 'nightly') {
@@ -2779,6 +2780,7 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`);
         const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
+        core.info('Create symlinks');
         createSymlink(pypyLocation, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
         createSymlink(pypyLocation, pypySimlink);
         createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
@@ -2787,6 +2789,7 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
 }
 function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
+        core.info('Installing and updating pip');
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
         yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
         if (IS_WINDOWS) {
@@ -2798,26 +2801,26 @@ function installPip(pythonLocation) {
         }
     });
 }
-function findNigthlyRelease(releases, pythonVersion, architecture) {
-    const foundRelease = releases.filter(item => {
+function findNightlyRelease(releases, pythonVersion, architecture) {
+    const foundReleases = releases.filter(item => {
         const semverPython = semver.coerce(item.python_version);
         return (item.pypy_version === 'nightly' &&
             semver.satisfies(semverPython, pythonVersion) &&
             item.files.some(file => file.arch === architecture && file.platform === process.platform));
     });
-    if (foundRelease.length === 0) {
+    if (foundReleases.length === 0) {
         return null;
     }
-    const foundAsset = foundRelease[0].files.find(item => item.arch === architecture && item.platform === process.platform);
+    const foundAsset = foundReleases[0].files.find(item => item.arch === architecture && item.platform === process.platform);
     return {
         foundAsset,
-        resolvedPythonVersion: foundRelease[0].python_version,
-        resolvedPyPyVersion: foundRelease[0].pypy_version
+        resolvedPythonVersion: foundReleases[0].python_version,
+        resolvedPyPyVersion: foundReleases[0].pypy_version
     };
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
-    if (pypyVersion === 'nightly') {
-        return findNigthlyRelease(releases, pythonVersion, architecture);
+    if (isNightlyKeyword(pypyVersion)) {
+        return findNightlyRelease(releases, pythonVersion, architecture);
     }
     const filterReleases = releases.filter(item => semver.satisfies(item.python_version, pythonVersion) &&
         semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion) &&
@@ -2878,6 +2881,9 @@ function createSymlink(sourcePath, targetPath) {
         return;
     }
     fs.symlinkSync(sourcePath, targetPath);
+}
+function isNightlyKeyword(pypyVersion) {
+    return pypyVersion === 'nightly';
 }
 function pypyVersionToSemantic(versionSpec) {
     const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
