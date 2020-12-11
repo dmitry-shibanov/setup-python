@@ -128,6 +128,7 @@ async function createPyPySymlink(
 async function installPip(pythonLocation: string) {
   core.info('Installing and updating pip');
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
+  // TO-Do should we skip updating of pip ?
   await exec.exec(
     `${pythonLocation}/python -m pip install --ignore-installed pip`
   );

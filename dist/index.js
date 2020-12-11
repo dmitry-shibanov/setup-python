@@ -2791,6 +2791,7 @@ function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         core.info('Installing and updating pip');
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
+        // TO-Do should we skip updating of pip ?
         yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
         if (IS_WINDOWS) {
             // Create symlink separatelly from createPyPySymlink, because
