@@ -150,13 +150,14 @@ function findRelease(
 ) {
   const filterReleases = releases.filter(item => {
     const isPythonVersionSatisfies = semver.satisfies(
-      semver.coerce(pypyVersionToSemantic(item.python_version))!,
+      semver.coerce(item.python_version)!,
       pythonVersion
     );
     const isPyPyNightly =
       isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
     const isPyPyVersionSatisfies =
-      isPyPyNightly || semver.satisfies(item.pypy_version, pypyVersion);
+      isPyPyNightly ||
+      semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
     const isArchExists = item.files.some(
       file => file.arch === architecture && file.platform === process.platform
     );
