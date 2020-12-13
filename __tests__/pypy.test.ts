@@ -121,6 +121,7 @@ describe('Test whole workflow', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.resetAllMocks();
     jest.clearAllMocks();
   });
