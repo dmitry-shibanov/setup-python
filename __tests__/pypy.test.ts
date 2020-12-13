@@ -3,7 +3,7 @@ import path = require('path');
 import * as httpm from '@actions/http-client';
 import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
-import * as data from './data/pypy.json';
+const manifestData = require('./data/pypy.json');
 
 import * as finder from '../src/find-pypy';
 import * as installer from '../src/install-pypy';
@@ -12,7 +12,7 @@ class SpyHttpClient {
   constructor(private userAgent: string) {}
 
   getJson = async <T>() => {
-    const result = JSON.stringify(data);
+    const result = JSON.stringify(manifestData);
     return {
       result: JSON.parse(result) as T
     };
