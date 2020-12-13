@@ -1,6 +1,7 @@
 import fs = require('fs');
 import path = require('path');
-import * as httpm from '@actions/http-client';
+import httpm, {HttpClient} from '@actions/http-client';
+import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
 const manifestData = require('./data/pypy.json');
@@ -8,15 +9,19 @@ const manifestData = require('./data/pypy.json');
 import * as finder from '../src/find-pypy';
 import * as installer from '../src/install-pypy';
 
-class SpyHttpClient {
-  constructor(private userAgent: string) {}
+interface IPyPyManifestAsset {
+  filename: string;
+  arch: string;
+  platform: string;
+  download_url: string;
+}
 
-  getJson = async <T>() => {
-    const result = JSON.stringify(manifestData);
-    return {
-      result: JSON.parse(result) as T
-    };
-  };
+interface IPyPyManifestRelease {
+  pypy_version: string;
+  python_version: string;
+  stable: boolean;
+  latest_pypy: boolean;
+  files: IPyPyManifestAsset[];
 }
 
 let architecture: string;
@@ -75,7 +80,7 @@ describe('Test whole workflow', () => {
   let spyExtractTar: jest.SpyInstance;
   let spyFsReadDir: jest.SpyInstance;
   let spyFsWriteFile: jest.SpyInstance;
-  let httpmGetJson: jest.SpyInstance;
+  let spyHttpClient: jest.SpyInstance;
   let spyExistsSync: jest.SpyInstance;
   let spyExec: jest.SpyInstance;
   let spySymlinkSync: jest.SpyInstance;
@@ -93,8 +98,17 @@ describe('Test whole workflow', () => {
     spyFsWriteFile = jest.spyOn(fs, 'writeFileSync');
     spyFsWriteFile.mockImplementation(() => undefined);
 
-    httpmGetJson = jest.spyOn(httpm, 'HttpClient');
-    httpmGetJson.mockImplementation(() => SpyHttpClient);
+    spyHttpClient = jest.spyOn(HttpClient.prototype, 'getJson');
+    spyHttpClient.mockImplementation(
+      async (): Promise<ifm.ITypedResponse<IPyPyManifestRelease[]>> => {
+        const result = JSON.stringify(manifestData);
+        return {
+          statusCode: 200,
+          headers: {},
+          result: JSON.parse(result) as IPyPyManifestRelease[]
+        };
+      }
+    );
 
     spyExec = jest.spyOn(exec, 'exec');
     spyExec.mockImplementation(() => undefined);
@@ -112,8 +126,8 @@ describe('Test whole workflow', () => {
   });
 
   it(`installPyPy throws an error because release was not found`, () => {
-    expect(installer.installPyPy('7.3.3', '3.6.17', 'x64')).toThrowError(
-      `PyPy version 7.3.3 (3.6.17) with arch x64 not found`
+    expect(installer.installPyPy('7.3.3', '3.6.17', architecture)).toThrowError(
+      `PyPy version 3.6.17 (7.3.3) with arch ${architecture} not found`
     );
   });
 
@@ -137,7 +151,7 @@ describe('Test whole workflow', () => {
 
   it(`findPyPyVersion throws an error that release was not found`, () => {
     expect(finder.findPyPyVersion('pypy3.7-7.3.x', architecture)).toThrowError(
-      `PyPy version 7.3.x (3.7) with arch ${architecture} not found`
+      `PyPy version 3.7 (7.3.x) with arch ${architecture} not found`
     );
   });
 
