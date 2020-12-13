@@ -45,9 +45,6 @@ const tempDir = path.join(
   'temp'
 );
 
-process.env['RUNNER_TOOL_CACHE'] = toolDir;
-process.env['RUNNER_TEMP'] = tempDir;
-
 describe('Test pypyVersionToSemantic', () => {
   it('pypyVersionToSemantic with 7.3.3rc1 to 7.3.3-rc.1', () => {
     expect(installer.pypyVersionToSemantic('7.3.3rc1')).toEqual('7.3.3-rc.1');
