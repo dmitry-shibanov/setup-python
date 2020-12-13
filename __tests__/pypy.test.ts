@@ -126,7 +126,9 @@ describe('Test whole workflow', () => {
   });
 
   it(`installPyPy throws an error because release was not found`, () => {
-    expect(installer.installPyPy('7.3.3', '3.6.17', architecture)).toThrowError(
+    expect(
+      installer.installPyPy('7.3.3', '3.6.17', architecture)
+    ).rejects.toThrowError(
       `PyPy version 3.6.17 (7.3.3) with arch ${architecture} not found`
     );
   });
@@ -150,7 +152,9 @@ describe('Test whole workflow', () => {
   });
 
   it(`findPyPyVersion throws an error that release was not found`, () => {
-    expect(finder.findPyPyVersion('pypy3.7-7.3.x', architecture)).toThrowError(
+    expect(
+      finder.findPyPyVersion('pypy3.7-7.3.x', architecture)
+    ).rejects.toThrowError(
       `PyPy version 3.7 (7.3.x) with arch ${architecture} not found`
     );
   });
