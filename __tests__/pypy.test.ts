@@ -173,7 +173,7 @@ describe('Test findPyPyToolCache', () => {
 
 describe('Test findRelease', () => {
   const releases = JSON.parse(manifestData) as IPyPyManifestRelease[];
-  let files;
+  let files: IPyPyManifestAsset;
   const windowsFiles = {
     filename: 'pypy3.6-v7.3.3-win32.zip',
     arch: 'x86',
