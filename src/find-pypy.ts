@@ -76,6 +76,7 @@ export function findPyPyToolCache(
     if (!isPyPyVersionSatisfies) {
       installDir = null;
       resolvedPyPyVersion = '';
+      resolvedPythonVersion = '';
     }
   }
 
@@ -89,7 +90,7 @@ export function findPyPyToolCache(
 }
 
 export function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
-  const versions = versionSpec.split('-');
+  const versions = versionSpec.split('-').filter(item => !!item);
 
   if (versions.length < 2) {
     throw new Error(

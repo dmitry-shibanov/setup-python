@@ -1142,6 +1142,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
         if (!isPyPyVersionSatisfies) {
             installDir = null;
             resolvedPyPyVersion = '';
+            resolvedPythonVersion = '';
         }
     }
     if (!installDir) {
@@ -1149,8 +1150,9 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     }
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
+exports.findPyPyToolCache = findPyPyToolCache;
 function parsePyPyVersion(versionSpec) {
-    const versions = versionSpec.split('-');
+    const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
         throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples.");
     }
@@ -1167,9 +1169,11 @@ function parsePyPyVersion(versionSpec) {
         pythonVersion: pythonVersion
     };
 }
+exports.parsePyPyVersion = parsePyPyVersion;
 function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
+exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
 
 
 /***/ }),
@@ -2824,6 +2828,7 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         resolvedPyPyVersion: foundRelease.pypy_version
     };
 }
+exports.findRelease = findRelease;
 // helper functions
 /**
  * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
