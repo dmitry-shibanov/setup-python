@@ -102,7 +102,7 @@ async function createPyPySymlink(
   createSymlinkInFolder(
     pypyBinaryPath,
     `pypy${pypyBinaryPostfix}${binaryExtension}`,
-    'python',
+    `python${binaryExtension}`,
     true
   );
 }
