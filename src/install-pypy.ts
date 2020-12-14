@@ -112,9 +112,9 @@ async function installPip(pythonLocation: string) {
   const pythonBinary = path.join(pythonLocation, 'python');
   await exec.exec(`${pythonBinary} -m ensurepip`);
   // TO-DO should we skip updating of pip ?
-  // await exec.exec(
-  //   `${pythonLocation}/python -m pip install --ignore-installed pip`
-  // );
+  await exec.exec(
+    `${pythonLocation}/python -m pip install --ignore-installed pip`
+  );
 }
 
 function findRelease(

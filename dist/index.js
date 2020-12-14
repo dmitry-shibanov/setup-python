@@ -2825,9 +2825,7 @@ function installPip(pythonLocation) {
         const pythonBinary = path.join(pythonLocation, 'python');
         yield exec.exec(`${pythonBinary} -m ensurepip`);
         // TO-DO should we skip updating of pip ?
-        // await exec.exec(
-        //   `${pythonLocation}/python -m pip install --ignore-installed pip`
-        // );
+        yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
     });
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
