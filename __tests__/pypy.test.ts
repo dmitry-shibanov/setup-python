@@ -112,9 +112,14 @@ describe('Test parsePyPyVersion', () => {
   });
 
   it("versionSpec is 'pypy-' should throw an error", () => {
-    expect(finder.parsePyPyVersion('pypy-')).toThrowError(
-      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
-    );
+    try {
+      finder.parsePyPyVersion('pypy-');
+      expect(true).toBe(false);
+    } catch (e) {
+      expect(e.message).toEqual(
+        "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
+      );
+    }
   });
 });
 
