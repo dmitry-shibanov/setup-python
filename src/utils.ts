@@ -37,6 +37,6 @@ export function createSymlinkInFolder(
 
   fs.symlinkSync(sourcePath, targetPath);
   if (!IS_WINDOWS && setExecutable) {
-    fs.chmodSync(targetPath, '+x');
+    fs.chmodSync(targetPath, '755');
   }
 }
