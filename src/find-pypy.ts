@@ -1,11 +1,10 @@
 import * as path from 'path';
 import * as pypyInstall from './install-pypy';
+import {IS_WINDOWS} from './utils';
 
 import * as semver from 'semver';
 import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
-
-const IS_WINDOWS = process.platform === 'win32';
 
 interface IPyPyVersionSpec {
   pypyVersion: string;
@@ -45,7 +44,8 @@ export async function findPyPyVersion(
     ));
   }
 
-  const _binDir = path.join(installDir, 'bin');
+  const pipDir = IS_WINDOWS ? 'Scripts' : 'bin';
+  const _binDir = path.join(installDir, pipDir);
   const pythonLocation = pypyInstall.getPyPyBinaryPath(installDir);
   core.exportVariable('pythonLocation', pythonLocation);
   core.addPath(pythonLocation);

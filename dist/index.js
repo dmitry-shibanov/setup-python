@@ -1098,10 +1098,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(__webpack_require__(622));
 const pypyInstall = __importStar(__webpack_require__(369));
+const utils_1 = __webpack_require__(163);
 const semver = __importStar(__webpack_require__(876));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
-const IS_WINDOWS = process.platform === 'win32';
 function findPyPyVersion(versionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let resolvedPyPyVersion = '';
@@ -1109,7 +1109,7 @@ function findPyPyVersion(versionSpec, architecture) {
         let installDir;
         const pypyVersionSpec = parsePyPyVersion(versionSpec);
         // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
-        if (IS_WINDOWS && architecture === 'x64') {
+        if (utils_1.IS_WINDOWS && architecture === 'x64') {
             architecture = 'x86';
         }
         ({ installDir, resolvedPythonVersion, resolvedPyPyVersion } = findPyPyToolCache(pypyVersionSpec.pythonVersion, pypyVersionSpec.pypyVersion, architecture));
@@ -1120,7 +1120,8 @@ function findPyPyVersion(versionSpec, architecture) {
                 resolvedPyPyVersion
             } = yield pypyInstall.installPyPy(pypyVersionSpec.pypyVersion, pypyVersionSpec.pythonVersion, architecture));
         }
-        const _binDir = path.join(installDir, 'bin');
+        const pipDir = utils_1.IS_WINDOWS ? 'Scripts' : 'bin';
+        const _binDir = path.join(installDir, pipDir);
         const pythonLocation = pypyInstall.getPyPyBinaryPath(installDir);
         core.exportVariable('pythonLocation', pythonLocation);
         core.addPath(pythonLocation);
@@ -2299,6 +2300,18 @@ exports.debug = debug; // for test
 
 /***/ }),
 
+/***/ 163:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IS_WINDOWS = process.platform === 'win32';
+exports.IS_LINUX = process.platform === 'linux';
+
+
+/***/ }),
+
 /***/ 164:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -2721,7 +2734,8 @@ const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
-const IS_WINDOWS = process.platform === 'win32';
+const child_process = __importStar(__webpack_require__(129));
+const utils_1 = __webpack_require__(163);
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -2733,10 +2747,10 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
-        core.info(`Download PyPy from "${downloadUrl}"`);
+        core.info(`Downloadind PyPy from "${downloadUrl}"`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
-        core.info('Extract downloaded archive');
-        if (IS_WINDOWS) {
+        core.info('Extracting downloaded archive');
+        if (utils_1.IS_WINDOWS) {
             downloadDir = yield tc.extractZip(pypyPath);
         }
         else {
@@ -2774,14 +2788,12 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
         const version = semver.coerce(pythonVersion);
         const pythonBinaryPostfix = semver.major(version);
         const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
-        let binaryExtension = IS_WINDOWS ? '.exe' : '';
+        let binaryExtension = utils_1.IS_WINDOWS ? '.exe' : '';
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`);
-        const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
-        core.info('Create symlinks');
-        createSymlink(pypyLocation, `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
-        createSymlink(pypyLocation, pypySimlink);
-        createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
+        core.info('Creating symlinks');
+        createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, `python${pythonBinaryPostfix}${binaryExtension}`, true);
+        createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, 'python', true);
         yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
     });
 }
@@ -2790,14 +2802,9 @@ function installPip(pythonLocation) {
         core.info('Installing and updating pip');
         yield exec.exec(`${pythonLocation}/python -m ensurepip`);
         // TO-DO should we skip updating of pip ?
-        yield exec.exec(`${pythonLocation}/python -m pip install --ignore-installed pip`);
-        if (IS_WINDOWS) {
-            // Create symlink separatelly from createPyPySymlink, because
-            // Scripts folder had not existed before installation of pip.
-            const binPath = path.join(pythonLocation, 'bin');
-            const scriptPath = path.join(pythonLocation, 'Scripts');
-            fs.symlinkSync(scriptPath, binPath);
-        }
+        // await exec.exec(
+        //   `${pythonLocation}/python -m pip install --ignore-installed pip`
+        // );
     });
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
@@ -2853,18 +2860,21 @@ function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
  */
 function getPyPyBinaryPath(installDir) {
     const _binDir = path.join(installDir, 'bin');
-    return IS_WINDOWS ? installDir : _binDir;
+    return utils_1.IS_WINDOWS ? installDir : _binDir;
 }
 exports.getPyPyBinaryPath = getPyPyBinaryPath;
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
  */
-function createSymlink(sourcePath, targetPath) {
+function createSymlinkInFolder(folderPath, sourceName, targetName, setExecutable) {
+    const sourcePath = path.join(folderPath, sourceName);
+    const targetPath = path.join(folderPath, targetName);
     if (fs.existsSync(targetPath)) {
         return;
     }
     fs.symlinkSync(sourcePath, targetPath);
+    setExecutable && child_process.spawnSync('/bin/chmod', ['+x', targetPath]);
 }
 function isNightlyKeyword(pypyVersion) {
     return pypyVersion === 'nightly';
@@ -6722,14 +6732,13 @@ const path = __importStar(__webpack_require__(622));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
 const exec = __importStar(__webpack_require__(986));
+const utils_1 = __webpack_require__(163);
 const TOKEN = core.getInput('token');
 const AUTH = !TOKEN || isGhes() ? undefined : `token ${TOKEN}`;
 const MANIFEST_REPO_OWNER = 'actions';
 const MANIFEST_REPO_NAME = 'python-versions';
 const MANIFEST_REPO_BRANCH = 'main';
 exports.MANIFEST_URL = `https://raw.githubusercontent.com/${MANIFEST_REPO_OWNER}/${MANIFEST_REPO_NAME}/${MANIFEST_REPO_BRANCH}/versions-manifest.json`;
-const IS_WINDOWS = process.platform === 'win32';
-const IS_LINUX = process.platform === 'linux';
 function findReleaseFromManifest(semanticVersionSpec, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         const manifest = yield tc.getManifestFromRepo(MANIFEST_REPO_OWNER, MANIFEST_REPO_NAME, AUTH, MANIFEST_REPO_BRANCH);
@@ -6741,7 +6750,7 @@ function installPython(workingDirectory) {
     return __awaiter(this, void 0, void 0, function* () {
         const options = {
             cwd: workingDirectory,
-            env: Object.assign(Object.assign({}, process.env), (IS_LINUX && { LD_LIBRARY_PATH: path.join(workingDirectory, 'lib') })),
+            env: Object.assign(Object.assign({}, process.env), (utils_1.IS_LINUX && { LD_LIBRARY_PATH: path.join(workingDirectory, 'lib') })),
             silent: true,
             listeners: {
                 stdout: (data) => {
@@ -6752,7 +6761,7 @@ function installPython(workingDirectory) {
                 }
             }
         };
-        if (IS_WINDOWS) {
+        if (utils_1.IS_WINDOWS) {
             yield exec.exec('powershell', ['./setup.ps1'], options);
         }
         else {
@@ -6767,7 +6776,7 @@ function installCpythonFromRelease(release) {
         const pythonPath = yield tc.downloadTool(downloadUrl, undefined, AUTH);
         core.info('Extract downloaded archive');
         let pythonExtractedFolder;
-        if (IS_WINDOWS) {
+        if (utils_1.IS_WINDOWS) {
             pythonExtractedFolder = yield tc.extractZip(pythonPath);
         }
         else {
@@ -6982,12 +6991,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const os = __importStar(__webpack_require__(87));
 const path = __importStar(__webpack_require__(622));
+const utils_1 = __webpack_require__(163);
 const semver = __importStar(__webpack_require__(876));
 const installer = __importStar(__webpack_require__(824));
 const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
-const IS_WINDOWS = process.platform === 'win32';
-const IS_LINUX = process.platform === 'linux';
 // Python has "scripts" or "bin" directories where command-line tools that come with packages are installed.
 // This is where pip is, along with anything that pip installs.
 // There is a seperate directory for `pip install --user`.
@@ -7001,7 +7009,7 @@ const IS_LINUX = process.platform === 'linux';
 //      (--user) %APPDATA%\Python\PythonXY\Scripts
 // See https://docs.python.org/3/library/sysconfig.html
 function binDir(installDir) {
-    if (IS_WINDOWS) {
+    if (utils_1.IS_WINDOWS) {
         return path.join(installDir, 'Scripts');
     }
     else {
@@ -7016,7 +7024,7 @@ function binDir(installDir) {
 function usePyPy(majorVersion, architecture) {
     const findPyPy = tc.find.bind(undefined, 'PyPy', majorVersion.toString());
     let installDir = findPyPy(architecture);
-    if (!installDir && IS_WINDOWS) {
+    if (!installDir && utils_1.IS_WINDOWS) {
         // PyPy only precompiles binaries for x86, but the architecture parameter defaults to x64.
         // On our Windows virtual environments, we only install an x86 version.
         // Fall back to x86.
@@ -7030,7 +7038,7 @@ function usePyPy(majorVersion, architecture) {
     const _binDir = path.join(installDir, 'bin');
     // On Linux and macOS, the Python interpreter is in 'bin'.
     // On Windows, it is in the installation root.
-    const pythonLocation = IS_WINDOWS ? installDir : _binDir;
+    const pythonLocation = utils_1.IS_WINDOWS ? installDir : _binDir;
     core.exportVariable('pythonLocation', pythonLocation);
     core.addPath(installDir);
     core.addPath(_binDir);
@@ -7060,7 +7068,7 @@ function useCpythonVersion(version, architecture) {
             ].join(os.EOL));
         }
         core.exportVariable('pythonLocation', installDir);
-        if (IS_LINUX) {
+        if (utils_1.IS_LINUX) {
             const libPath = process.env.LD_LIBRARY_PATH
                 ? `:${process.env.LD_LIBRARY_PATH}`
                 : '';
@@ -7071,7 +7079,7 @@ function useCpythonVersion(version, architecture) {
         }
         core.addPath(installDir);
         core.addPath(binDir(installDir));
-        if (IS_WINDOWS) {
+        if (utils_1.IS_WINDOWS) {
             // Add --user directory
             // `installDir` from tool cache should look like $RUNNER_TOOL_CACHE/Python/<semantic version>/x64/
             // So if `findLocalTool` succeeded above, we must have a conformant `installDir`

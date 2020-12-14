@@ -5,24 +5,11 @@ import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
 import * as fs from 'fs';
+import * as child_process from 'child_process';
 
-const IS_WINDOWS = process.platform === 'win32';
+import {IS_WINDOWS, IPyPyManifestRelease} from './utils';
+
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
-
-interface IPyPyManifestAsset {
-  filename: string;
-  arch: string;
-  platform: string;
-  download_url: string;
-}
-
-interface IPyPyManifestRelease {
-  pypy_version: string;
-  python_version: string;
-  stable: boolean;
-  latest_pypy: boolean;
-  files: IPyPyManifestAsset[];
-}
 
 export async function installPyPy(
   pypyVersion: string,
@@ -48,10 +35,10 @@ export async function installPyPy(
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
   let downloadUrl = `${foundAsset.download_url}`;
 
-  core.info(`Download PyPy from "${downloadUrl}"`);
+  core.info(`Downloadind PyPy from "${downloadUrl}"`);
   const pypyPath = await tc.downloadTool(downloadUrl);
 
-  core.info('Extract downloaded archive');
+  core.info('Extracting downloaded archive');
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
@@ -110,15 +97,21 @@ async function createPyPySymlink(
     pypyBinaryPath,
     `pypy${pypyBinaryPostfix}${binaryExtension}`
   );
-  const pypySimlink = path.join(pypyBinaryPath, `pypy${binaryExtension}`);
-  core.info('Create symlinks');
-  createSymlink(
-    pypyLocation,
-    `${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
+
+  core.info('Creating symlinks');
+  createSymlinkInFolder(
+    pypyBinaryPath,
+    `pypy${pypyBinaryPostfix}${binaryExtension}`,
+    `python${pythonBinaryPostfix}${binaryExtension}`,
+    true
   );
 
-  createSymlink(pypyLocation, pypySimlink);
-  createSymlink(pypyLocation, `${pythonLocation}${binaryExtension}`);
+  createSymlinkInFolder(
+    pypyBinaryPath,
+    `pypy${pypyBinaryPostfix}${binaryExtension}`,
+    'python',
+    true
+  );
 
   await exec.exec(
     `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
@@ -129,17 +122,9 @@ async function installPip(pythonLocation: string) {
   core.info('Installing and updating pip');
   await exec.exec(`${pythonLocation}/python -m ensurepip`);
   // TO-DO should we skip updating of pip ?
-  await exec.exec(
-    `${pythonLocation}/python -m pip install --ignore-installed pip`
-  );
-
-  if (IS_WINDOWS) {
-    // Create symlink separatelly from createPyPySymlink, because
-    // Scripts folder had not existed before installation of pip.
-    const binPath = path.join(pythonLocation, 'bin');
-    const scriptPath = path.join(pythonLocation, 'Scripts');
-    fs.symlinkSync(scriptPath, binPath);
-  }
+  // await exec.exec(
+  //   `${pythonLocation}/python -m pip install --ignore-installed pip`
+  // );
 }
 
 function findRelease(
@@ -235,11 +220,20 @@ export function getPyPyBinaryPath(installDir: string) {
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
  */
-function createSymlink(sourcePath: string, targetPath: string) {
+function createSymlinkInFolder(
+  folderPath: string,
+  sourceName: string,
+  targetName: string,
+  setExecutable?: boolean
+) {
+  const sourcePath = path.join(folderPath, sourceName);
+  const targetPath = path.join(folderPath, targetName);
   if (fs.existsSync(targetPath)) {
     return;
   }
+
   fs.symlinkSync(sourcePath, targetPath);
+  setExecutable && child_process.spawnSync('/bin/chmod', ['+x', targetPath]);
 }
 
 function isNightlyKeyword(pypyVersion: string) {
