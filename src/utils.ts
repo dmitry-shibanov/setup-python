@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 export const IS_WINDOWS = process.platform === 'win32';
 export const IS_LINUX = process.platform === 'linux';
 
@@ -14,4 +17,26 @@ export interface IPyPyManifestRelease {
   stable: boolean;
   latest_pypy: boolean;
   files: IPyPyManifestAsset[];
+}
+
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+export function createSymlinkInFolder(
+  folderPath: string,
+  sourceName: string,
+  targetName: string,
+  setExecutable = false
+) {
+  const sourcePath = path.join(folderPath, sourceName);
+  const targetPath = path.join(folderPath, targetName);
+  if (fs.existsSync(targetPath)) {
+    return;
+  }
+
+  fs.symlinkSync(sourcePath, targetPath);
+  if (IS_WINDOWS && setExecutable) {
+    fs.chmodSync(targetPath, '+x');
+  }
 }

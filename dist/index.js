@@ -1143,6 +1143,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
         if (!isPyPyVersionSatisfies) {
             installDir = null;
             resolvedPyPyVersion = '';
+            resolvedPythonVersion = '';
         }
     }
     if (!installDir) {
@@ -1151,7 +1152,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
 function parsePyPyVersion(versionSpec) {
-    const versions = versionSpec.split('-');
+    const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
         throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples.");
     }
@@ -2301,13 +2302,38 @@ exports.debug = debug; // for test
 /***/ }),
 
 /***/ 163:
-/***/ (function(__unusedmodule, exports) {
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs = __importStar(__webpack_require__(747));
+const path = __importStar(__webpack_require__(622));
 exports.IS_WINDOWS = process.platform === 'win32';
 exports.IS_LINUX = process.platform === 'linux';
+/** create Symlinks for downloaded PyPy
+ *  It should be executed only for downloaded versions in runtime, because
+ *  toolcache versions have this setup.
+ */
+function createSymlinkInFolder(folderPath, sourceName, targetName, setExecutable = false) {
+    const sourcePath = path.join(folderPath, sourceName);
+    const targetPath = path.join(folderPath, targetName);
+    if (fs.existsSync(targetPath)) {
+        return;
+    }
+    fs.symlinkSync(sourcePath, targetPath);
+    if (exports.IS_WINDOWS && setExecutable) {
+        fs.chmodSync(targetPath, '+x');
+    }
+}
+exports.createSymlinkInFolder = createSymlinkInFolder;
 
 
 /***/ }),
@@ -2746,9 +2772,9 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
-        core.info(`Downloadind PyPy from "${downloadUrl}"`);
+        core.info(`Downloading PyPy from "${downloadUrl}" ...`);
         const pypyPath = yield tc.downloadTool(downloadUrl);
-        core.info('Extracting downloaded archive');
+        core.info('Extracting downloaded archive...');
         if (utils_1.IS_WINDOWS) {
             downloadDir = yield tc.extractZip(pypyPath);
         }
@@ -2790,10 +2816,9 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
         let binaryExtension = utils_1.IS_WINDOWS ? '.exe' : '';
         const pythonLocation = path.join(pypyBinaryPath, 'python');
         const pypyLocation = path.join(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`);
-        core.info('Creating symlinks');
-        createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, `python${pythonBinaryPostfix}${binaryExtension}`, true);
-        createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, 'python', true);
-        yield exec.exec(`chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`);
+        core.info('Creating symlinks...');
+        utils_1.createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, `python${pythonBinaryPostfix}${binaryExtension}`, true);
+        utils_1.createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, 'python', true);
     });
 }
 function installPip(pythonLocation) {
@@ -2862,19 +2887,6 @@ function getPyPyBinaryPath(installDir) {
     return utils_1.IS_WINDOWS ? installDir : _binDir;
 }
 exports.getPyPyBinaryPath = getPyPyBinaryPath;
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-function createSymlinkInFolder(folderPath, sourceName, targetName, setExecutable) {
-    const sourcePath = path.join(folderPath, sourceName);
-    const targetPath = path.join(folderPath, targetName);
-    if (fs.existsSync(targetPath)) {
-        return;
-    }
-    fs.symlinkSync(sourcePath, targetPath);
-    setExecutable && fs.chmodSync(targetPath, '+x');
-}
 function isNightlyKeyword(pypyVersion) {
     return pypyVersion === 'nightly';
 }

@@ -5,9 +5,8 @@ import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
 import * as fs from 'fs';
-import * as child_process from 'child_process';
 
-import {IS_WINDOWS, IPyPyManifestRelease} from './utils';
+import {IS_WINDOWS, IPyPyManifestRelease, createSymlinkInFolder} from './utils';
 
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
 
@@ -35,10 +34,10 @@ export async function installPyPy(
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
   let downloadUrl = `${foundAsset.download_url}`;
 
-  core.info(`Downloadind PyPy from "${downloadUrl}"`);
+  core.info(`Downloading PyPy from "${downloadUrl}" ...`);
   const pypyPath = await tc.downloadTool(downloadUrl);
 
-  core.info('Extracting downloaded archive');
+  core.info('Extracting downloaded archive...');
   if (IS_WINDOWS) {
     downloadDir = await tc.extractZip(pypyPath);
   } else {
@@ -98,7 +97,7 @@ async function createPyPySymlink(
     `pypy${pypyBinaryPostfix}${binaryExtension}`
   );
 
-  core.info('Creating symlinks');
+  core.info('Creating symlinks...');
   createSymlinkInFolder(
     pypyBinaryPath,
     `pypy${pypyBinaryPostfix}${binaryExtension}`,
@@ -111,10 +110,6 @@ async function createPyPySymlink(
     `pypy${pypyBinaryPostfix}${binaryExtension}`,
     'python',
     true
-  );
-
-  await exec.exec(
-    `chmod +x ${pythonLocation}${binaryExtension} ${pythonLocation}${pythonBinaryPostfix}${binaryExtension}`
   );
 }
 
@@ -214,26 +209,6 @@ function writeExactPyPyVersionFile(
 export function getPyPyBinaryPath(installDir: string) {
   const _binDir = path.join(installDir, 'bin');
   return IS_WINDOWS ? installDir : _binDir;
-}
-
-/** create Symlinks for downloaded PyPy
- *  It should be executed only for downloaded versions in runtime, because
- *  toolcache versions have this setup.
- */
-function createSymlinkInFolder(
-  folderPath: string,
-  sourceName: string,
-  targetName: string,
-  setExecutable?: boolean
-) {
-  const sourcePath = path.join(folderPath, sourceName);
-  const targetPath = path.join(folderPath, targetName);
-  if (fs.existsSync(targetPath)) {
-    return;
-  }
-
-  fs.symlinkSync(sourcePath, targetPath);
-  setExecutable && fs.chmodSync(targetPath, '+x');
 }
 
 function isNightlyKeyword(pypyVersion: string) {
