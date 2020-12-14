@@ -1,5 +1,6 @@
 import fs = require('fs');
 import path = require('path');
+import * as semver from 'semver';
 import httpm, {HttpClient} from '@actions/http-client';
 import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
@@ -91,7 +92,7 @@ describe('Test parsePyPyVersion', () => {
 
   it('versionSpec is pypy-3.6', () => {
     expect(finder.parsePyPyVersion('pypy-3.6')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: 'x'
     });
   });
@@ -126,7 +127,12 @@ describe('Test findPyPyToolCache', () => {
 
   beforeEach(() => {
     tcFind = jest.spyOn(tc, 'find');
-    tcFind.mockImplementation(() => pypyPath);
+    tcFind.mockImplementation((toolname: string, pythonVersion: string) => {
+      const semverVersion = new semver.Range(pythonVersion);
+      return semver.satisfies(actualPythonVersion, semverVersion)
+        ? pypyPath
+        : '';
+    });
 
     spyReadExactPyPyVersion = jest.spyOn(installer, 'readExactPyPyVersion');
     spyReadExactPyPyVersion.mockImplementation(() => actualPyPyVersion);
