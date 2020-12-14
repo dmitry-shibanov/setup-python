@@ -70,21 +70,21 @@ describe('Test pypyVersionToSemantic', () => {
 describe('Test parsePyPyVersion', () => {
   it('versionSpec is pypy-3.6-7.3.3', () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: '7.3.3'
     });
   });
 
   it('versionSpec is pypy-3.6-7.3.x', () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.x')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: '7.3.x'
     });
   });
 
   it('versionSpec is pypy-3.6-7.x', () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.x')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: '7.x'
     });
   });
@@ -98,20 +98,20 @@ describe('Test parsePyPyVersion', () => {
 
   it('versionSpec is pypy-3.6-nightly', () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: 'nightly'
     });
   });
 
   it('versionSpec is pypy-3.6-7.3.3rc1', () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
-      pythonVersion: '3.6.x',
+      pythonVersion: '3.6',
       pypyVersion: '7.3.3-rc.1'
     });
   });
 
   it("versionSpec is 'pypy-' should throw an error", () => {
-    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toThrowError(
+    expect(finder.parsePyPyVersion('pypy-')).toThrowError(
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
     );
   });
@@ -147,7 +147,7 @@ describe('Test findPyPyToolCache', () => {
   });
 
   it('PyPy exists in the path and versions are satisfied with semver', () => {
-    expect(finder.findPyPyToolCache('3.6.x', '7.5.x', architecture)).toEqual({
+    expect(finder.findPyPyToolCache('3.6', '7.5.x', architecture)).toEqual({
       installDir: pypyPath,
       resolvedPythonVersion: actualPythonVersion,
       resolvedPyPyVersion: actualPyPyVersion
@@ -155,7 +155,7 @@ describe('Test findPyPyToolCache', () => {
   });
 
   it('PyPy does not exist in the path', () => {
-    expect(finder.findPyPyToolCache('3.6.12', '7.5.4', architecture)).toEqual({
+    expect(finder.findPyPyToolCache('3.7', '7.5.4', architecture)).toEqual({
       installDir: '',
       resolvedPythonVersion: '',
       resolvedPyPyVersion: ''
@@ -163,7 +163,7 @@ describe('Test findPyPyToolCache', () => {
   });
 
   it('PyPy exists in the path, but PyPy version is not equal', () => {
-    expect(finder.findPyPyToolCache('3.6.17', '7.5.1', architecture)).toEqual({
+    expect(finder.findPyPyToolCache('3.6', '7.5.1', architecture)).toEqual({
       installDir: '',
       resolvedPythonVersion: '',
       resolvedPyPyVersion: ''
