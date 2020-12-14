@@ -54,7 +54,7 @@ export async function findPyPyVersion(
   return {resolvedPyPyVersion, resolvedPythonVersion};
 }
 
-function findPyPyToolCache(
+export function findPyPyToolCache(
   pythonVersion: string,
   pypyVersion: string,
   architecture: string
@@ -88,7 +88,7 @@ function findPyPyToolCache(
   return {installDir, resolvedPythonVersion, resolvedPyPyVersion};
 }
 
-function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
+export function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   const versions = versionSpec.split('-');
 
   if (versions.length < 2) {
@@ -110,6 +110,6 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   };
 }
 
-function getPyPyVersionFromPath(installDir: string) {
+export function getPyPyVersionFromPath(installDir: string) {
   return path.basename(path.dirname(installDir));
 }

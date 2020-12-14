@@ -67,12 +67,187 @@ describe('Test pypyVersionToSemantic', () => {
   });
 });
 
-describe('Test whole workflow', () => {
-  let tcFind: jest.SpyInstance = jest.spyOn(tc, 'find');
-  tcFind.mockImplementation(() =>
-    path.join('PyPy', '3.6.12', process.platform === 'win32' ? 'x86' : 'x64')
-  );
+describe('Test parsePyPyVersion', () => {
+  it('versionSpec is pypy-3.6-7.3.3', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: '7.3.3'
+    });
+  });
 
+  it('versionSpec is pypy-3.6-7.3.x', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.x')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: '7.3.x'
+    });
+  });
+
+  it('versionSpec is pypy-3.6-7.x', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.x')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: '7.x'
+    });
+  });
+
+  it('versionSpec is pypy-3.6', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: 'x'
+    });
+  });
+
+  it('versionSpec is pypy-3.6-nightly', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: 'nightly'
+    });
+  });
+
+  it('versionSpec is pypy-3.6-7.3.3rc1', () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
+      pythonVersion: '3.6.x',
+      pypyVersion: '7.3.3-rc.1'
+    });
+  });
+
+  it("versionSpec is 'pypy-' should throw an error", () => {
+    expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toThrowError(
+      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
+    );
+  });
+});
+
+describe('Test findPyPyToolCache', () => {
+  const actualPythonVersion = '3.6.17';
+  const actualPyPyVersion = '7.5.4';
+  const pypyPath = path.join('PyPy', actualPythonVersion, architecture);
+  let tcFind: jest.SpyInstance;
+  let spyReadExactPyPyVersion: jest.SpyInstance;
+
+  beforeEach(() => {
+    tcFind = jest.spyOn(tc, 'find');
+    tcFind.mockImplementation(() => pypyPath);
+
+    spyReadExactPyPyVersion = jest.spyOn(installer, 'readExactPyPyVersion');
+    spyReadExactPyPyVersion.mockImplementation(() => actualPyPyVersion);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.resetAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('PyPy exists in the path and versions are satisfied', () => {
+    expect(finder.findPyPyToolCache('3.6.17', '7.5.4', architecture)).toEqual({
+      installDir: pypyPath,
+      resolvedPythonVersion: actualPythonVersion,
+      resolvedPyPyVersion: actualPyPyVersion
+    });
+  });
+
+  it('PyPy exists in the path and versions are satisfied with semver', () => {
+    expect(finder.findPyPyToolCache('3.6.x', '7.5.x', architecture)).toEqual({
+      installDir: pypyPath,
+      resolvedPythonVersion: actualPythonVersion,
+      resolvedPyPyVersion: actualPyPyVersion
+    });
+  });
+
+  it('PyPy does not exist in the path', () => {
+    expect(finder.findPyPyToolCache('3.6.12', '7.5.4', architecture)).toEqual({
+      installDir: '',
+      resolvedPythonVersion: '',
+      resolvedPyPyVersion: ''
+    });
+  });
+
+  it('PyPy exists in the path, but PyPy version is not equal', () => {
+    expect(finder.findPyPyToolCache('3.6.17', '7.5.1', architecture)).toEqual({
+      installDir: '',
+      resolvedPythonVersion: '',
+      resolvedPyPyVersion: ''
+    });
+  });
+});
+
+describe('Test findRelease', () => {
+  const releases = JSON.parse(manifestData) as IPyPyManifestRelease[];
+  let files;
+  const windowsFiles = {
+    filename: 'pypy3.6-v7.3.3-win32.zip',
+    arch: 'x86',
+    platform: 'win32',
+    download_url:
+      'https://test.download.python.org/pypy/pypy3.6-v7.3.3-win32.zip'
+  };
+
+  const linuxFiles = {
+    filename: 'pypy3.6-v7.3.3-linux64.tar.bz2',
+    arch: 'x64',
+    platform: 'linux',
+    download_url:
+      'https://test.download.python.org/pypy/pypy3.6-v7.3.3-linux64.tar.bz2'
+  };
+
+  const darwinFiles = {
+    filename: 'pypy3.6-v7.3.3-osx64.tar.bz2',
+    arch: 'x64',
+    platform: 'darwin',
+    download_url:
+      'https://test.download.python.org/pypy/pypy3.6-v7.3.3-osx64.tar.bz2'
+  };
+
+  if (process.platform === 'win32') {
+    files = windowsFiles;
+  } else if (process.platform === 'darwin') {
+    files = darwinFiles;
+  } else {
+    files = linuxFiles;
+  }
+
+  it('specifyed python version was found, but PyPy version was not satsifyed', () => {
+    const pythonVersion = '3.6.x';
+    const pypyVersion = '7.3.7';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual(null);
+  });
+
+  it('The specifyed release was found', () => {
+    const pythonVersion = '3.6.x';
+    const pypyVersion = '7.3.3';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual({
+      foundAsset: files,
+      resolvedPythonVersion: '3.6.12',
+      resolvedPyPyVersion: pypyVersion
+    });
+  });
+
+  it('The specifyed nightly release was found', () => {
+    const pythonVersion = '3.6.x';
+    const pypyVersion = 'nightly';
+    const filename =
+      process.platform === 'win32' ? 'filename.zip' : 'filename.tar.bz2';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual({
+      foundAsset: {
+        filename: filename,
+        arch: architecture,
+        platform: process.platform,
+        download_url: `http://nightlyBuilds.org/${filename}`
+      },
+      resolvedPythonVersion: '3.6',
+      resolvedPyPyVersion: pypyVersion
+    });
+  });
+});
+
+describe('Test whole workflow', () => {
+  let tcFind: jest.SpyInstance;
   let spyExtractZip: jest.SpyInstance;
   let spyExtractTar: jest.SpyInstance;
   let spyFsReadDir: jest.SpyInstance;
@@ -83,6 +258,11 @@ describe('Test whole workflow', () => {
   let spySymlinkSync: jest.SpyInstance;
 
   beforeEach(() => {
+    tcFind = jest.spyOn(tc, 'find');
+    tcFind.mockImplementation(() =>
+      path.join('PyPy', '3.6.12', process.platform === 'win32' ? 'x86' : 'x64')
+    );
+
     spyExtractZip = jest.spyOn(tc, 'extractZip');
     spyExtractZip.mockImplementation(() => tempDir);
 

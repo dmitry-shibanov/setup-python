@@ -142,7 +142,7 @@ async function installPip(pythonLocation: string) {
   }
 }
 
-function findRelease(
+export function findRelease(
   releases: IPyPyManifestRelease[],
   pythonVersion: string,
   pypyVersion: string,
