@@ -2734,7 +2734,6 @@ const semver = __importStar(__webpack_require__(876));
 const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs = __importStar(__webpack_require__(747));
-const child_process = __importStar(__webpack_require__(129));
 const utils_1 = __webpack_require__(163);
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
@@ -2874,7 +2873,7 @@ function createSymlinkInFolder(folderPath, sourceName, targetName, setExecutable
         return;
     }
     fs.symlinkSync(sourcePath, targetPath);
-    setExecutable && child_process.spawnSync('/bin/chmod', ['+x', targetPath]);
+    setExecutable && fs.chmodSync(targetPath, '+x');
 }
 function isNightlyKeyword(pypyVersion) {
     return pypyVersion === 'nightly';

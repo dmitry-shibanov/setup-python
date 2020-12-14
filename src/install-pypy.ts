@@ -233,7 +233,7 @@ function createSymlinkInFolder(
   }
 
   fs.symlinkSync(sourcePath, targetPath);
-  setExecutable && child_process.spawnSync('/bin/chmod', ['+x', targetPath]);
+  setExecutable && fs.chmodSync(targetPath, '+x');
 }
 
 function isNightlyKeyword(pypyVersion: string) {
