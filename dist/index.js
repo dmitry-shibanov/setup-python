@@ -2814,8 +2814,6 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
         const pythonBinaryPostfix = semver.major(version);
         const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
         let binaryExtension = utils_1.IS_WINDOWS ? '.exe' : '';
-        const pythonLocation = path.join(pypyBinaryPath, 'python');
-        const pypyLocation = path.join(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`);
         core.info('Creating symlinks...');
         utils_1.createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, `python${pythonBinaryPostfix}${binaryExtension}`, true);
         utils_1.createSymlinkInFolder(pypyBinaryPath, `pypy${pypyBinaryPostfix}${binaryExtension}`, 'python', true);
@@ -2824,7 +2822,8 @@ function createPyPySymlink(pypyBinaryPath, pythonVersion) {
 function installPip(pythonLocation) {
     return __awaiter(this, void 0, void 0, function* () {
         core.info('Installing and updating pip');
-        yield exec.exec(`${pythonLocation}/python -m ensurepip`);
+        const pythonBinary = path.join(pythonLocation, 'python');
+        yield exec.exec(`${pythonBinary} -m ensurepip`);
         // TO-DO should we skip updating of pip ?
         // await exec.exec(
         //   `${pythonLocation}/python -m pip install --ignore-installed pip`

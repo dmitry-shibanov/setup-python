@@ -89,13 +89,7 @@ async function createPyPySymlink(
   const version = semver.coerce(pythonVersion)!;
   const pythonBinaryPostfix = semver.major(version);
   const pypyBinaryPostfix = pythonBinaryPostfix === 2 ? '' : '3';
-
   let binaryExtension = IS_WINDOWS ? '.exe' : '';
-  const pythonLocation = path.join(pypyBinaryPath, 'python');
-  const pypyLocation = path.join(
-    pypyBinaryPath,
-    `pypy${pypyBinaryPostfix}${binaryExtension}`
-  );
 
   core.info('Creating symlinks...');
   createSymlinkInFolder(
@@ -115,7 +109,8 @@ async function createPyPySymlink(
 
 async function installPip(pythonLocation: string) {
   core.info('Installing and updating pip');
-  await exec.exec(`${pythonLocation}/python -m ensurepip`);
+  const pythonBinary = path.join(pythonLocation, 'python');
+  await exec.exec(`${pythonBinary} -m ensurepip`);
   // TO-DO should we skip updating of pip ?
   // await exec.exec(
   //   `${pythonLocation}/python -m pip install --ignore-installed pip`
