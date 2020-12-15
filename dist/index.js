@@ -1154,7 +1154,8 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
-        throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
+        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
+        process.exit();
     }
     const pythonVersion = versions[1];
     let pypyVersion;
@@ -1165,7 +1166,8 @@ function parsePyPyVersion(versionSpec) {
         pypyVersion = 'x';
     }
     if (!validateVersion(pythonVersion) || !validateVersion(pypyVersion)) {
-        throw new Error("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation.");
+        core.setFailed("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation.");
+        process.exit();
     }
     return {
         pypyVersion: pypyVersion,
@@ -1176,8 +1178,7 @@ function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
 function validateVersion(version) {
-    const validationResult = semver.validRange(version);
-    return !!validationResult;
+    return (pypyInstall.isNightlyKeyword(version) || Boolean(semver.validRange(version)));
 }
 
 
@@ -2778,7 +2779,8 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            throw new Error(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
+            core.setFailed(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
+            process.exit();
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
@@ -2813,7 +2815,8 @@ function getAvailablePyPyVersions() {
         const http = new httpm.HttpClient('tool-cache');
         const response = yield http.getJson(url);
         if (!response.result) {
-            throw new Error(`Unable to retrieve the list of available PyPy versions from '${url}'`);
+            core.setFailed(`Unable to retrieve the list of available PyPy versions from '${url}'`);
+            process.exit();
         }
         return response.result;
     });
@@ -2898,6 +2901,7 @@ exports.getPyPyBinaryPath = getPyPyBinaryPath;
 function isNightlyKeyword(pypyVersion) {
     return pypyVersion === 'nightly';
 }
+exports.isNightlyKeyword = isNightlyKeyword;
 function pypyVersionToSemantic(versionSpec) {
     const prereleaseVersion = /(\d+\.\d+\.\d+)((?:a|b|rc))(\d*)/g;
     return versionSpec.replace(prereleaseVersion, '$1-$2.$3');

@@ -30,9 +30,10 @@ export async function installPyPy(
   );
 
   if (!releaseData || !releaseData.foundAsset) {
-    throw new Error(
+    core.setFailed(
       `PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`
     );
+    process.exit();
   }
 
   const {foundAsset, resolvedPythonVersion, resolvedPyPyVersion} = releaseData;
@@ -78,9 +79,10 @@ async function getAvailablePyPyVersions() {
 
   const response = await http.getJson<IPyPyManifestRelease[]>(url);
   if (!response.result) {
-    throw new Error(
+    core.setFailed(
       `Unable to retrieve the list of available PyPy versions from '${url}'`
     );
+    process.exit();
   }
 
   return response.result;
@@ -212,7 +214,7 @@ export function getPyPyBinaryPath(installDir: string) {
   return IS_WINDOWS ? installDir : _binDir;
 }
 
-function isNightlyKeyword(pypyVersion: string) {
+export function isNightlyKeyword(pypyVersion: string) {
   return pypyVersion === 'nightly';
 }
 

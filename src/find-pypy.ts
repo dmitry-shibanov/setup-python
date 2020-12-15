@@ -93,9 +93,10 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   const versions = versionSpec.split('-').filter(item => !!item);
 
   if (versions.length < 2) {
-    throw new Error(
+    core.setFailed(
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation."
     );
+    process.exit();
   }
 
   const pythonVersion = versions[1];
@@ -107,9 +108,10 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   }
 
   if (!validateVersion(pythonVersion) || !validateVersion(pypyVersion)) {
-    throw new Error(
+    core.setFailed(
       "Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation."
     );
+    process.exit();
   }
 
   return {
@@ -123,7 +125,7 @@ function getPyPyVersionFromPath(installDir: string) {
 }
 
 function validateVersion(version: string) {
-  const validationResult = semver.validRange(version);
-
-  return !!validationResult;
+  return (
+    pypyInstall.isNightlyKeyword(version) || Boolean(semver.validRange(version))
+  );
 }
