@@ -1156,6 +1156,9 @@ function parsePyPyVersion(versionSpec) {
     if (versions.length < 2) {
         core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
     }
+    if (!validatePythonVersion(versions[1])) {
+        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
+    }
     const pythonVersion = versions[1];
     let pypyVersion;
     if (versions.length > 2) {
@@ -1171,6 +1174,11 @@ function parsePyPyVersion(versionSpec) {
 }
 function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
+}
+function validatePythonVersion(version) {
+    let re = /^\d+(\.\d+){0,2}$/;
+    let found = version.match(re);
+    return !!(found === null || found === void 0 ? void 0 : found.input);
 }
 
 
@@ -2766,6 +2774,9 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let downloadDir;
         const releases = yield getAvailablePyPyVersions();
+        if (!releases || releases.length === 0) {
+            core.setFailed('No release was found');
+        }
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
             throw new Error(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
@@ -2834,7 +2845,8 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         const isPyPyNightly = isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
         const isPyPyVersionSatisfied = isPyPyNightly ||
             semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
-        const isArchPresent = item.files.some(file => file.arch === architecture && file.platform === process.platform);
+        const isArchPresent = item.files &&
+            item.files.some(file => file.arch === architecture && file.platform === process.platform);
         return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
     });
     if (filterReleases.length === 0) {

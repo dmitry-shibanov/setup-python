@@ -18,6 +18,10 @@ export async function installPyPy(
   let downloadDir;
 
   const releases = await getAvailablePyPyVersions();
+  if (!releases || releases.length === 0) {
+    core.setFailed('No release was found');
+  }
+
   const releaseData = findRelease(
     releases,
     pythonVersion,
@@ -133,9 +137,11 @@ function findRelease(
     const isPyPyVersionSatisfied =
       isPyPyNightly ||
       semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
-    const isArchPresent = item.files.some(
-      file => file.arch === architecture && file.platform === process.platform
-    );
+    const isArchPresent =
+      item.files &&
+      item.files.some(
+        file => file.arch === architecture && file.platform === process.platform
+      );
     return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
   });
 

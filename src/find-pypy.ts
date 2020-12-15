@@ -97,6 +97,13 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation."
     );
   }
+
+  if (!validatePythonVersion(versions[1])) {
+    core.setFailed(
+      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation."
+    );
+  }
+
   const pythonVersion = versions[1];
   let pypyVersion: string;
   if (versions.length > 2) {
@@ -113,4 +120,10 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
 
 function getPyPyVersionFromPath(installDir: string) {
   return path.basename(path.dirname(installDir));
+}
+
+function validatePythonVersion(version: string) {
+  let re = /^\d+(\.\d+){0,2}$/;
+  let found = version.match(re);
+  return !!found?.input;
 }
