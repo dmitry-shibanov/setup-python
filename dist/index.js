@@ -1151,6 +1151,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     }
     return { installDir, resolvedPythonVersion, resolvedPyPyVersion };
 }
+exports.findPyPyToolCache = findPyPyToolCache;
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
@@ -1169,6 +1170,7 @@ function parsePyPyVersion(versionSpec) {
         pythonVersion: pythonVersion
     };
 }
+exports.parsePyPyVersion = parsePyPyVersion;
 function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
@@ -2852,6 +2854,7 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         resolvedPyPyVersion: foundRelease.pypy_version
     };
 }
+exports.findRelease = findRelease;
 // helper functions
 /**
  * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
