@@ -249,14 +249,32 @@ describe('findRelease', () => {
     });
   });
 
-  it('The release with python 3.7 and PyPy x was found', () => {
+  it('The release with python 3.7 and PyPy 7.3.3rc2 was found', () => {
     const pythonVersion = '3.7';
+    const pypyVersion = installer.pypyVersionToSemantic('7.3.3rc2');
+    const extension = process.platform === 'win32' ? '.exe' : '.tar.bz2';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual({
+      foundAsset: {
+        filename: `test${extension}`,
+        arch: architecture,
+        platform: process.platform,
+        download_url: `test${extension}`
+      },
+      resolvedPythonVersion: '3.7.7',
+      resolvedPyPyVersion: '7.3.3rc2'
+    });
+  });
+
+  it('The release with python 3.6 and PyPy 7.3.3 was found', () => {
+    const pythonVersion = '3.6';
     const pypyVersion = 'x';
     expect(
       installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
     ).toEqual({
       foundAsset: files,
-      resolvedPythonVersion: '3.7.7',
+      resolvedPythonVersion: '3.6.12',
       resolvedPyPyVersion: '7.3.3'
     });
   });

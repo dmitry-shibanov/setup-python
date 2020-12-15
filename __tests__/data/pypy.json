@@ -90,6 +90,51 @@
       ]
     },
     {
+      "pypy_version": "7.3.3rc2",
+      "python_version": "3.7.7",
+      "stable": false,
+      "latest_pypy": false,
+      "date": "2020-11-11",
+      "files": [
+        {
+          "filename": "test.tar.bz2",
+          "arch": "aarch64",
+          "platform": "linux",
+          "download_url": "test.tar.bz2"
+        },
+        {
+          "filename": "test.tar.bz2",
+          "arch": "i686",
+          "platform": "linux",
+          "download_url": "test.tar.bz2"
+        },
+        {
+          "filename": "test.tar.bz2",
+          "arch": "x64",
+          "platform": "linux",
+          "download_url": "test.tar.bz2"
+        },
+        {
+          "filename": "test.tar.bz2",
+          "arch": "x64",
+          "platform": "darwin",
+          "download_url": "test.tar.bz2"
+        },
+        {
+          "filename": "test.zip",
+          "arch": "x86",
+          "platform": "win32",
+          "download_url": "test.zip"
+        },
+        {
+          "filename": "test.tar.bz2",
+          "arch": "s390x",
+          "platform": "linux",
+          "download_url": "test.tar.bz2"
+        }
+      ]
+    },
+    {
       "pypy_version": "7.3.3",
       "python_version": "3.7.9",
       "stable": true,
