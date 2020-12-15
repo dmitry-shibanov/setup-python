@@ -2,6 +2,7 @@ import {HttpClient} from '@actions/http-client';
 import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
+import * as core from '@actions/core';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -25,6 +26,11 @@ if (IS_WINDOWS) {
 
 const toolDir = path.join(__dirname, 'runner', 'tools');
 const tempDir = path.join(__dirname, 'runner', 'temp');
+
+let setFailed = jest.spyOn(core, 'setFailed');
+setFailed.mockImplementation((input: string) => {
+  throw new Error(input);
+});
 
 describe('pypyVersionToSemantic', () => {
   it.each([
