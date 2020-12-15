@@ -1156,9 +1156,6 @@ function parsePyPyVersion(versionSpec) {
     if (versions.length < 2) {
         core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
     }
-    if (!validatePythonVersion(versions[1])) {
-        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
-    }
     const pythonVersion = versions[1];
     let pypyVersion;
     if (versions.length > 2) {
@@ -1166,6 +1163,9 @@ function parsePyPyVersion(versionSpec) {
     }
     else {
         pypyVersion = 'x';
+    }
+    if (!validateVersion(pythonVersion) || !validateVersion(pypyVersion)) {
+        core.setFailed("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation.. See README for examples and documentation.");
     }
     return {
         pypyVersion: pypyVersion,
@@ -1175,10 +1175,10 @@ function parsePyPyVersion(versionSpec) {
 function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
-function validatePythonVersion(version) {
-    let re = /^\d+(\.\d+){0,2}$/;
-    let found = version.match(re);
-    return !!(found === null || found === void 0 ? void 0 : found.input);
+function validateVersion(version) {
+    const semverVersion = semver.coerce(version);
+    const validationResult = semver.valid(semverVersion);
+    return !!validationResult;
 }
 
 
