@@ -6,7 +6,12 @@ import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
 import * as fs from 'fs';
 
-import {IS_WINDOWS, IPyPyManifestRelease, createSymlinkInFolder} from './utils';
+import {
+  IS_WINDOWS,
+  IPyPyManifestRelease,
+  createSymlinkInFolder,
+  isNightlyKeyword
+} from './utils';
 
 const PYPY_VERSION_FILE = 'PYPY_VERSION';
 
@@ -19,7 +24,8 @@ export async function installPyPy(
 
   const releases = await getAvailablePyPyVersions();
   if (!releases || releases.length === 0) {
-    core.setFailed('No release was found');
+    core.setFailed('No release was found in PyPy version.json');
+    process.exit();
   }
 
   const releaseData = findRelease(
@@ -212,10 +218,6 @@ function writeExactPyPyVersionFile(
 export function getPyPyBinaryPath(installDir: string) {
   const _binDir = path.join(installDir, 'bin');
   return IS_WINDOWS ? installDir : _binDir;
-}
-
-export function isNightlyKeyword(pypyVersion: string) {
-  return pypyVersion === 'nightly';
 }
 
 export function pypyVersionToSemantic(versionSpec: string) {

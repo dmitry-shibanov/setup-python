@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as pypyInstall from './install-pypy';
-import {IS_WINDOWS} from './utils';
+import {IS_WINDOWS, validateVersion} from './utils';
 
 import * as semver from 'semver';
 import * as core from '@actions/core';
@@ -122,10 +122,4 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
 
 function getPyPyVersionFromPath(installDir: string) {
   return path.basename(path.dirname(installDir));
-}
-
-function validateVersion(version: string) {
-  return (
-    pypyInstall.isNightlyKeyword(version) || Boolean(semver.validRange(version))
-  );
 }
