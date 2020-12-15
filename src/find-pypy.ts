@@ -111,6 +111,7 @@ export function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   };
 }
 
-function getPyPyVersionFromPath(installDir: string) {
+export function getPyPyVersionFromPath(installDir: string) {
   return path.basename(path.dirname(installDir));
+  // /fake/toolcache/PyPy/3.6.5/x64
 }

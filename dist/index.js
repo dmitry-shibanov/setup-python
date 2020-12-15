@@ -1173,7 +1173,9 @@ function parsePyPyVersion(versionSpec) {
 exports.parsePyPyVersion = parsePyPyVersion;
 function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
+    // /fake/toolcache/PyPy/3.6.5/x64
 }
+exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
 
 
 /***/ }),
@@ -2336,6 +2338,7 @@ function createSymlinkInFolder(folderPath, sourceName, targetName, setExecutable
     }
 }
 exports.createSymlinkInFolder = createSymlinkInFolder;
+// validateVersion
 
 
 /***/ }),

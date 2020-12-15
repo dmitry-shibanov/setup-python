@@ -40,3 +40,5 @@ export function createSymlinkInFolder(
     fs.chmodSync(targetPath, '755');
   }
 }
+
+// validateVersion
