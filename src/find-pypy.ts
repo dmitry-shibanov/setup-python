@@ -93,8 +93,8 @@ function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
   const versions = versionSpec.split('-').filter(item => !!item);
 
   if (versions.length < 2) {
-    throw new Error(
-      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
+    core.setFailed(
+      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation."
     );
   }
   const pythonVersion = versions[1];

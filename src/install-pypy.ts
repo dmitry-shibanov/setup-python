@@ -124,19 +124,19 @@ function findRelease(
   architecture: string
 ) {
   const filterReleases = releases.filter(item => {
-    const isPythonVersionSatisfies = semver.satisfies(
+    const isPythonVersionSatisfied = semver.satisfies(
       semver.coerce(item.python_version)!,
       pythonVersion
     );
     const isPyPyNightly =
       isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
-    const isPyPyVersionSatisfies =
+    const isPyPyVersionSatisfied =
       isPyPyNightly ||
       semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
-    const isArchExists = item.files.some(
+    const isArchPresent = item.files.some(
       file => file.arch === architecture && file.platform === process.platform
     );
-    return isPythonVersionSatisfies && isPyPyVersionSatisfies && isArchExists;
+    return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
   });
 
   if (filterReleases.length === 0) {

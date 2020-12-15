@@ -1154,7 +1154,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
-        throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples.");
+        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
     }
     const pythonVersion = versions[1];
     let pypyVersion;
@@ -2830,12 +2830,12 @@ function installPip(pythonLocation) {
 }
 function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     const filterReleases = releases.filter(item => {
-        const isPythonVersionSatisfies = semver.satisfies(semver.coerce(item.python_version), pythonVersion);
+        const isPythonVersionSatisfied = semver.satisfies(semver.coerce(item.python_version), pythonVersion);
         const isPyPyNightly = isNightlyKeyword(pypyVersion) && isNightlyKeyword(item.pypy_version);
-        const isPyPyVersionSatisfies = isPyPyNightly ||
+        const isPyPyVersionSatisfied = isPyPyNightly ||
             semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
-        const isArchExists = item.files.some(file => file.arch === architecture && file.platform === process.platform);
-        return isPythonVersionSatisfies && isPyPyVersionSatisfies && isArchExists;
+        const isArchPresent = item.files.some(file => file.arch === architecture && file.platform === process.platform);
+        return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
     });
     if (filterReleases.length === 0) {
         return null;
