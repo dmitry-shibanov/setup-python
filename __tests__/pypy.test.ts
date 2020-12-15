@@ -1,14 +1,18 @@
-import fs = require('fs');
-import path = require('path');
-import * as semver from 'semver';
-import httpm, {HttpClient} from '@actions/http-client';
+import {HttpClient} from '@actions/http-client';
 import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
-const manifestData = require('./data/pypy.json');
+import * as core from '@actions/core';
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as semver from 'semver';
 
 import * as finder from '../src/find-pypy';
 import * as installer from '../src/install-pypy';
+import * as setup from '../src/setup-python';
+
+const manifestData = require('./data/pypy.json');
 
 interface IPyPyManifestAsset {
   filename: string;
@@ -46,84 +50,79 @@ const tempDir = path.join(
   'temp'
 );
 
-describe('Test pypyVersionToSemantic', () => {
-  it('pypyVersionToSemantic with 7.3.3rc1 to 7.3.3-rc.1', () => {
+describe('pypyVersionToSemantic', () => {
+  it('pypyVersionToSemantic get 7.3.3rc1 and return 7.3.3-rc.1', () => {
     expect(installer.pypyVersionToSemantic('7.3.3rc1')).toEqual('7.3.3-rc.1');
   });
 
-  it('pypyVersionToSemantic with 7.3.3 return 7.3.3', () => {
+  it('pypyVersionToSemantic get 7.3.3 and return 7.3.3', () => {
     expect(installer.pypyVersionToSemantic('7.3.3')).toEqual('7.3.3');
   });
 
-  it('pypyVersionToSemantic with 7.3.x to 7.3.x', () => {
+  it('pypyVersionToSemantic get 7.3.x and return 7.3.x', () => {
     expect(installer.pypyVersionToSemantic('7.3.x')).toEqual('7.3.x');
   });
 
-  it('pypyVersionToSemantic with 7.x to 7.x', () => {
+  it('pypyVersionToSemantic get 7.x and return 7.x', () => {
     expect(installer.pypyVersionToSemantic('7.x')).toEqual('7.x');
   });
 
-  it('pypyVersionToSemantic with nightly to nightly', () => {
+  it('pypyVersionToSemantic get nightly and return nightly', () => {
     expect(installer.pypyVersionToSemantic('nightly')).toEqual('nightly');
   });
 });
 
-describe('Test parsePyPyVersion', () => {
-  it('versionSpec is pypy-3.6-7.3.3', () => {
+describe('parsePyPyVersion', () => {
+  it("versionSpec splits 'pypy-3.6-7.3.3'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.3')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: '7.3.3'
     });
   });
 
-  it('versionSpec is pypy-3.6-7.3.x', () => {
+  it("versionSpec splits 'pypy-3.6-7.3.x'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.x')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: '7.3.x'
     });
   });
 
-  it('versionSpec is pypy-3.6-7.x', () => {
+  it("versionSpec splits 'pypy-3.6-7.x'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.x')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: '7.x'
     });
   });
 
-  it('versionSpec is pypy-3.6', () => {
+  it("versionSpec splits 'pypy-3.6'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: 'x'
     });
   });
 
-  it('versionSpec is pypy-3.6-nightly', () => {
+  it("versionSpec splits 'pypy-3.6-nightly'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6-nightly')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: 'nightly'
     });
   });
 
-  it('versionSpec is pypy-3.6-7.3.3rc1', () => {
+  it("versionSpec splits 'pypy-3.6-7.3.3rc1'", () => {
     expect(finder.parsePyPyVersion('pypy-3.6-7.3.3rc1')).toEqual({
       pythonVersion: '3.6',
       pypyVersion: '7.3.3-rc.1'
     });
   });
 
-  it("versionSpec is 'pypy-' should throw an error", () => {
-    try {
-      finder.parsePyPyVersion('pypy-');
-      expect(true).toBe(false);
-    } catch (e) {
-      expect(e.message).toEqual(
-        "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
-      );
-    }
+  it("versionSpec tries to split 'pypy-' and should throw an error", () => {
+    expect(() => finder.parsePyPyVersion('pypy-')).toThrowError(
+      "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
+    );
   });
 });
 
-describe('Test findPyPyToolCache', () => {
+describe('findPyPyToolCache', () => {
   const actualPythonVersion = '3.6.17';
   const actualPyPyVersion = '7.5.4';
   const pypyPath = path.join('PyPy', actualPythonVersion, architecture);
@@ -165,7 +164,7 @@ describe('Test findPyPyToolCache', () => {
     });
   });
 
-  it('PyPy does not exist in the path', () => {
+  it('PyPy exists in the path, but Python version is not equal', () => {
     expect(finder.findPyPyToolCache('3.7', '7.5.4', architecture)).toEqual({
       installDir: '',
       resolvedPythonVersion: '',
@@ -182,7 +181,7 @@ describe('Test findPyPyToolCache', () => {
   });
 });
 
-describe('Test findRelease', () => {
+describe('findRelease', () => {
   const result = JSON.stringify(manifestData);
   const releases = JSON.parse(result) as IPyPyManifestRelease[];
   let files: IPyPyManifestAsset;
@@ -218,16 +217,16 @@ describe('Test findRelease', () => {
     files = linuxFiles;
   }
 
-  it('specifyed python version was found, but PyPy version was not satsifyed', () => {
-    const pythonVersion = '3.6.x';
+  it('The specifyed python version was found, but PyPy version was not satsifyed', () => {
+    const pythonVersion = '3.6';
     const pypyVersion = '7.3.7';
     expect(
       installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
     ).toEqual(null);
   });
 
-  it('The specifyed release was found', () => {
-    const pythonVersion = '3.6.x';
+  it('The release with python 3.6 and PyPy 7.3.3 was found', () => {
+    const pythonVersion = '3.6';
     const pypyVersion = '7.3.3';
     expect(
       installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
@@ -238,8 +237,32 @@ describe('Test findRelease', () => {
     });
   });
 
+  it('The release with python 3.6 and PyPy 7.x was found', () => {
+    const pythonVersion = '3.6';
+    const pypyVersion = '7.x';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual({
+      foundAsset: files,
+      resolvedPythonVersion: '3.6.12',
+      resolvedPyPyVersion: '7.3.3'
+    });
+  });
+
+  it('The release with python 3.7 and PyPy x was found', () => {
+    const pythonVersion = '3.7';
+    const pypyVersion = 'x';
+    expect(
+      installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
+    ).toEqual({
+      foundAsset: files,
+      resolvedPythonVersion: '3.7.7',
+      resolvedPyPyVersion: '7.3.3'
+    });
+  });
+
   it('The specifyed nightly release was found', () => {
-    const pythonVersion = '3.6.x';
+    const pythonVersion = '3.6';
     const pypyVersion = 'nightly';
     const filename =
       process.platform === 'win32' ? 'filename.zip' : 'filename.tar.bz2';
@@ -258,7 +281,7 @@ describe('Test findRelease', () => {
   });
 });
 
-describe('Test whole workflow', () => {
+describe('Whole workflow', () => {
   let tcFind: jest.SpyInstance;
   let spyExtractZip: jest.SpyInstance;
   let spyExtractTar: jest.SpyInstance;
@@ -315,7 +338,7 @@ describe('Test whole workflow', () => {
     jest.clearAllMocks();
   });
 
-  it(`installPyPy throws an error because release was not found`, () => {
+  it('installPyPy throws an error because release was not found', () => {
     expect(
       installer.installPyPy('7.3.3', '3.6.17', architecture)
     ).rejects.toThrowError(
@@ -323,7 +346,7 @@ describe('Test whole workflow', () => {
     );
   });
 
-  it(`installPyPy return installDir, pypyVersion and pythonVersion`, () => {
+  it('installPyPy returns installDir, pypyVersion and pythonVersion', () => {
     expect(installer.installPyPy('7.3.x', '3.6.12', 'x64')).resolves.toEqual({
       installDir: path.join(toolDir, 'PyPy', '3.6.12', architecture),
       resolvedPythonVersion: '3.6.12',
@@ -331,9 +354,9 @@ describe('Test whole workflow', () => {
     });
   });
 
-  it(`findPyPyVersion finds from toolcache`, () => {
+  it('findPyPyVersion finds PyPy from toolcache', () => {
     expect(
-      finder.findPyPyVersion('pypy3.7-7.3.x', architecture)
+      finder.findPyPyVersion('pypy3.6-7.3.x', architecture)
     ).resolves.toEqual({
       installDir: path.join(toolDir, 'PyPy', '3.6.12', architecture),
       resolvedPythonVersion: '3.6.12',
@@ -341,7 +364,7 @@ describe('Test whole workflow', () => {
     });
   });
 
-  it(`findPyPyVersion throws an error that release was not found`, () => {
+  it('findPyPyVersion throws an error that release was not found', () => {
     expect(
       finder.findPyPyVersion('pypy3.7-7.3.x', architecture)
     ).rejects.toThrowError(
@@ -349,7 +372,7 @@ describe('Test whole workflow', () => {
     );
   });
 
-  it(`findPyPyVersion downloads PyPy`, () => {
+  it('findPyPyVersion downloads PyPy', () => {
     expect(
       finder.findPyPyVersion('pypy3.7-7.3.x', architecture)
     ).resolves.toEqual({
@@ -359,7 +382,7 @@ describe('Test whole workflow', () => {
     });
   });
 
-  it(`findPyPyVersion throws an error Invalid comparator`, () => {
+  it('findPyPyVersion throws an error Invalid comparator', () => {
     expect(
       finder.findPyPyVersion('pypy3.7-7.3.x', architecture)
     ).rejects.toThrowError(/Invalid comparator: */);
