@@ -2786,7 +2786,8 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         }
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            throw new Error(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
+            core.setFailed(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
+            process.exit();
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
@@ -2821,7 +2822,8 @@ function getAvailablePyPyVersions() {
         const http = new httpm.HttpClient('tool-cache');
         const response = yield http.getJson(url);
         if (!response.result) {
-            throw new Error(`Unable to retrieve the list of available PyPy versions from '${url}'`);
+            core.setFailed(`Unable to retrieve the list of available PyPy versions from '${url}'`);
+            process.exit();
         }
         return response.result;
     });
