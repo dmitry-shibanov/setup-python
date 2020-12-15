@@ -27,11 +27,6 @@ if (IS_WINDOWS) {
 const toolDir = path.join(__dirname, 'runner', 'tools');
 const tempDir = path.join(__dirname, 'runner', 'temp');
 
-let setFailed = jest.spyOn(core, 'setFailed');
-setFailed.mockImplementation((input: string) => {
-  throw new Error(input);
-});
-
 describe('pypyVersionToSemantic', () => {
   it.each([
     ['7.3.3rc1', '7.3.3-rc.1'],

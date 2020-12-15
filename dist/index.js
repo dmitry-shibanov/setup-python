@@ -1137,7 +1137,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     if (installDir) {
         // 'tc.find' finds tool based on Python version but we also need to check
         // whether PyPy version satisfies requested version.
-        resolvedPythonVersion = getPyPyVersionFromPath(installDir);
+        resolvedPythonVersion = utils_1.getPyPyVersionFromPath(installDir);
         resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
         const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
         if (!isPyPyVersionSatisfies) {
@@ -1155,8 +1155,7 @@ exports.findPyPyToolCache = findPyPyToolCache;
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
-        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
-        process.exit();
+        throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
     }
     const pythonVersion = versions[1];
     let pypyVersion;
@@ -1167,8 +1166,7 @@ function parsePyPyVersion(versionSpec) {
         pypyVersion = 'x';
     }
     if (!utils_1.validateVersion(pythonVersion) || !utils_1.validateVersion(pypyVersion)) {
-        core.setFailed("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation.");
-        process.exit();
+        throw new Error("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation.");
     }
     return {
         pypyVersion: pypyVersion,
@@ -1176,10 +1174,6 @@ function parsePyPyVersion(versionSpec) {
     };
 }
 exports.parsePyPyVersion = parsePyPyVersion;
-function getPyPyVersionFromPath(installDir) {
-    return path.basename(path.dirname(installDir));
-}
-exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
 
 
 /***/ }),
@@ -2351,6 +2345,10 @@ function isNightlyKeyword(pypyVersion) {
     return pypyVersion === 'nightly';
 }
 exports.isNightlyKeyword = isNightlyKeyword;
+function getPyPyVersionFromPath(installDir) {
+    return path.basename(path.dirname(installDir));
+}
+exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
 
 
 /***/ }),
@@ -2784,13 +2782,11 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         let downloadDir;
         const releases = yield getAvailablePyPyVersions();
         if (!releases || releases.length === 0) {
-            core.setFailed('No release was found in PyPy version.json');
-            process.exit();
+            throw new Error('No release was found in PyPy version.json');
         }
         const releaseData = findRelease(releases, pythonVersion, pypyVersion, architecture);
         if (!releaseData || !releaseData.foundAsset) {
-            core.setFailed(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
-            process.exit();
+            throw new Error(`PyPy version ${pythonVersion} (${pypyVersion}) with arch ${architecture} not found`);
         }
         const { foundAsset, resolvedPythonVersion, resolvedPyPyVersion } = releaseData;
         let downloadUrl = `${foundAsset.download_url}`;
@@ -2825,8 +2821,7 @@ function getAvailablePyPyVersions() {
         const http = new httpm.HttpClient('tool-cache');
         const response = yield http.getJson(url);
         if (!response.result) {
-            core.setFailed(`Unable to retrieve the list of available PyPy versions from '${url}'`);
-            process.exit();
+            throw new Error(`Unable to retrieve the list of available PyPy versions from '${url}'`);
         }
         return response.result;
     });

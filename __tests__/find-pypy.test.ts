@@ -2,7 +2,6 @@ import {HttpClient} from '@actions/http-client';
 import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
-import * as core from '@actions/core';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,7 +9,12 @@ import * as semver from 'semver';
 
 import * as finder from '../src/find-pypy';
 import * as installer from '../src/install-pypy';
-import {IPyPyManifestRelease, IS_WINDOWS, validateVersion} from '../src/utils';
+import {
+  IPyPyManifestRelease,
+  IS_WINDOWS,
+  validateVersion,
+  getPyPyVersionFromPath
+} from '../src/utils';
 
 const manifestData = require('./data/pypy.json');
 
@@ -24,11 +28,6 @@ if (IS_WINDOWS) {
 
 const toolDir = path.join(__dirname, 'runner', 'tools');
 const tempDir = path.join(__dirname, 'runner', 'temp');
-
-let setFailed = jest.spyOn(core, 'setFailed');
-setFailed.mockImplementation((input: string) => {
-  throw new Error(input);
-});
 
 describe('parsePyPyVersion', () => {
   it.each([
@@ -68,9 +67,9 @@ describe('validateVersion', () => {
 
 describe('getPyPyVersionFromPath', () => {
   it('/fake/toolcache/PyPy/3.6.5/x64 -> 3.6.5', () => {
-    expect(
-      finder.getPyPyVersionFromPath('/fake/toolcache/PyPy/3.6.5/x64')
-    ).toEqual('3.6.5');
+    expect(getPyPyVersionFromPath('/fake/toolcache/PyPy/3.6.5/x64')).toEqual(
+      '3.6.5'
+    );
   });
 });
 
