@@ -1154,7 +1154,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
 function parsePyPyVersion(versionSpec) {
     const versions = versionSpec.split('-').filter(item => !!item);
     if (versions.length < 2) {
-        core.setFailed("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
+        throw new Error("Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See README for examples and documentation.");
     }
     const pythonVersion = versions[1];
     let pypyVersion;
@@ -1165,7 +1165,7 @@ function parsePyPyVersion(versionSpec) {
         pypyVersion = 'x';
     }
     if (!validateVersion(pythonVersion) || !validateVersion(pypyVersion)) {
-        core.setFailed("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation.. See README for examples and documentation.");
+        throw new Error("Invalid 'version' property for PyPy. Both Python version and PyPy versions should satisfy SemVer notation. See README for examples and documentation.");
     }
     return {
         pypyVersion: pypyVersion,
@@ -1176,8 +1176,7 @@ function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
 function validateVersion(version) {
-    const semverVersion = semver.coerce(version);
-    const validationResult = semver.valid(semverVersion);
+    const validationResult = semver.validRange(version);
     return !!validationResult;
 }
 
