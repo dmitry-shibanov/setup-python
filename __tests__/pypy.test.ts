@@ -252,7 +252,7 @@ describe('findRelease', () => {
   it('The release with python 3.7 and PyPy 7.3.3rc2 was found', () => {
     const pythonVersion = '3.7';
     const pypyVersion = installer.pypyVersionToSemantic('7.3.3rc2');
-    const extension = process.platform === 'win32' ? '.exe' : '.tar.bz2';
+    const extension = process.platform === 'win32' ? '.zip' : '.tar.bz2';
     expect(
       installer.findRelease(releases, pythonVersion, pypyVersion, architecture)
     ).toEqual({
