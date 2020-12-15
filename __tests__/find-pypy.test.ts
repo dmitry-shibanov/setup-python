@@ -9,7 +9,7 @@ import * as semver from 'semver';
 
 import * as finder from '../src/find-pypy';
 import * as installer from '../src/install-pypy';
-import {IPyPyManifestRelease, IS_WINDOWS} from '../src/utils';
+import {IPyPyManifestRelease, IS_WINDOWS, validateVersion} from '../src/utils';
 
 const manifestData = require('./data/pypy.json');
 
@@ -40,6 +40,31 @@ describe('parsePyPyVersion', () => {
     expect(() => finder.parsePyPyVersion('pypy-')).toThrowError(
       "Invalid 'version' property for PyPy. PyPy version should be specified as 'pypy-<python-version>'. See readme for more examples."
     );
+  });
+});
+
+describe('validateVersion', () => {
+  it.each([
+    ['7.3.3', true],
+    ['7.3.x', true],
+    ['7.x', true],
+    ['x', true],
+    ['7.3.3-rc.1', true],
+    ['nightly', true],
+    ['7.3.b', false],
+    ['3.6', true],
+    ['3.b', false],
+    ['3', true]
+  ])('%s -> %s', (input, expected) => {
+    expect(validateVersion(input)).toEqual(expected);
+  });
+});
+
+describe('getPyPyVersionFromPath', () => {
+  it('/fake/toolcache/PyPy/3.6.5/x64 -> 3.6.5', () => {
+    expect(
+      finder.getPyPyVersionFromPath('/fake/toolcache/PyPy/3.6.5/x64')
+    ).toEqual('3.6.5');
   });
 });
 
