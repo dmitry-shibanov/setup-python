@@ -1138,7 +1138,7 @@ function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
         // 'tc.find' finds tool based on Python version but we also need to check
         // whether PyPy version satisfies requested version.
         resolvedPythonVersion = utils_1.getPyPyVersionFromPath(installDir);
-        resolvedPyPyVersion = pypyInstall.readExactPyPyVersion(installDir);
+        resolvedPyPyVersion = utils_1.readExactPyPyVersionFile(installDir);
         const isPyPyVersionSatisfies = semver.satisfies(resolvedPyPyVersion, pypyVersion);
         if (!isPyPyVersionSatisfies) {
             installDir = null;
@@ -2324,6 +2324,7 @@ const path = __importStar(__webpack_require__(622));
 const semver = __importStar(__webpack_require__(876));
 exports.IS_WINDOWS = process.platform === 'win32';
 exports.IS_LINUX = process.platform === 'linux';
+const PYPY_VERSION_FILE = 'PYPY_VERSION';
 /** create Symlinks for downloaded PyPy
  *  It should be executed only for downloaded versions in runtime, because
  *  toolcache versions have this setup.
@@ -2352,6 +2353,28 @@ function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
 exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
+function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
+    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+    fs_1.default.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+}
+exports.writeExactPyPyVersionFile = writeExactPyPyVersionFile;
+/**
+ * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
+ * There is no easy way to determine what PyPy version is located in specific folder
+ * 'pypy --version' is not reliable enough since it is not set properly for preview versions
+ * "7.3.3rc1" is marked as '7.3.3' in 'pypy --version'
+ * so we put PYPY_VERSION file to PyPy directory when install it to VM and read it when we need to know version
+ * PYPY_VERSION contains exact version from 'versions.json'
+ */
+function readExactPyPyVersionFile(installDir) {
+    let pypyVersion = '';
+    let fileVersion = path.join(installDir, PYPY_VERSION_FILE);
+    if (fs_1.default.existsSync(fileVersion)) {
+        pypyVersion = fs_1.default.readFileSync(fileVersion).toString();
+    }
+    return pypyVersion;
+}
+exports.readExactPyPyVersionFile = readExactPyPyVersionFile;
 
 
 /***/ }),
@@ -2782,7 +2805,6 @@ const httpm = __importStar(__webpack_require__(539));
 const exec = __importStar(__webpack_require__(986));
 const fs_1 = __importDefault(__webpack_require__(747));
 const utils_1 = __webpack_require__(163);
-const PYPY_VERSION_FILE = 'PYPY_VERSION';
 function installPyPy(pypyVersion, pythonVersion, architecture) {
     return __awaiter(this, void 0, void 0, function* () {
         let downloadDir;
@@ -2813,7 +2835,7 @@ function installPyPy(pypyVersion, pythonVersion, architecture) {
         if (!utils_1.isNightlyKeyword(resolvedPyPyVersion)) {
             installDir = yield tc.cacheDir(toolDir, 'PyPy', resolvedPythonVersion, architecture);
         }
-        writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
+        utils_1.writeExactPyPyVersionFile(installDir, resolvedPyPyVersion);
         const binaryPath = getPyPyBinaryPath(installDir);
         yield createPyPySymlink(binaryPath, resolvedPythonVersion);
         yield installPip(binaryPath);
@@ -2877,29 +2899,6 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
     };
 }
 exports.findRelease = findRelease;
-// helper functions
-/**
- * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
- * There is no easy way to determine what PyPy version is located in specific folder
- * 'pypy --version' is not reliable enough since it is not set properly for preview versions
- * "7.3.3rc1" is marked as '7.3.3' in 'pypy --version'
- * so we put PYPY_VERSION file to PyPy directory when install it to VM and read it when we need to know version
- * PYPY_VERSION contains exact version from 'versions.json'
- */
-function readExactPyPyVersion(installDir) {
-    let pypyVersion = '';
-    let fileVersion = path.join(installDir, PYPY_VERSION_FILE);
-    if (fs_1.default.existsSync(fileVersion)) {
-        pypyVersion = fs_1.default.readFileSync(fileVersion).toString();
-        core.debug(`Version from ${PYPY_VERSION_FILE} file is ${pypyVersion}`);
-    }
-    return pypyVersion;
-}
-exports.readExactPyPyVersion = readExactPyPyVersion;
-function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
-    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
-    fs_1.default.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-}
 /** Get PyPy binary location from the tool of installation directory
  *  - On Linux and macOS, the Python interpreter is in 'bin'.
  *  - On Windows, it is in the installation root.

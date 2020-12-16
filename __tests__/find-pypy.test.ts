@@ -1,5 +1,6 @@
 import fs from 'fs';
 
+import * as utils from '../src/utils';
 import {HttpClient} from '@actions/http-client';
 import * as ifm from '@actions/http-client/interfaces';
 import * as tc from '@actions/tool-cache';
@@ -9,7 +10,6 @@ import * as path from 'path';
 import * as semver from 'semver';
 
 import * as finder from '../src/find-pypy';
-import * as installer from '../src/install-pypy';
 import {
   IPyPyManifestRelease,
   IS_WINDOWS,
@@ -90,13 +90,14 @@ describe('findPyPyToolCache', () => {
         : '';
     });
 
-    spyReadExactPyPyVersion = jest.spyOn(installer, 'readExactPyPyVersion');
+    spyReadExactPyPyVersion = jest.spyOn(utils, 'readExactPyPyVersionFile');
     spyReadExactPyPyVersion.mockImplementation(() => actualPyPyVersion);
   });
 
   afterEach(() => {
     jest.resetAllMocks();
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('PyPy exists on the path and versions are satisfied', () => {
@@ -143,7 +144,7 @@ describe('findPyPyVersion', () => {
   let spyDownloadTool: jest.SpyInstance;
   let spyReadExactPyPyVersion: jest.SpyInstance;
   let spyFsReadDir: jest.SpyInstance;
-  let spyFsWriteFile: jest.SpyInstance;
+  let spyWriteExactPyPyVersionFile: jest.SpyInstance;
   let spyCacheDir: jest.SpyInstance;
   let spyChmodSync: jest.SpyInstance;
 
@@ -158,7 +159,13 @@ describe('findPyPyVersion', () => {
       return pypyPath;
     });
 
-    spyReadExactPyPyVersion = jest.spyOn(installer, 'readExactPyPyVersion');
+    spyWriteExactPyPyVersionFile = jest.spyOn(
+      utils,
+      'writeExactPyPyVersionFile'
+    );
+    spyWriteExactPyPyVersionFile.mockImplementation(() => null);
+
+    spyReadExactPyPyVersion = jest.spyOn(utils, 'readExactPyPyVersionFile');
     spyReadExactPyPyVersion.mockImplementation(() => '7.3.3');
 
     spyDownloadTool = jest.spyOn(tc, 'downloadTool');
@@ -172,9 +179,6 @@ describe('findPyPyVersion', () => {
 
     spyFsReadDir = jest.spyOn(fs, 'readdirSync');
     spyFsReadDir.mockImplementation((directory: string) => ['PyPyTest']);
-
-    spyFsWriteFile = jest.spyOn(fs, 'writeFileSync');
-    spyFsWriteFile.mockImplementation(() => undefined);
 
     spyHttpClient = jest.spyOn(HttpClient.prototype, 'getJson');
     spyHttpClient.mockImplementation(

@@ -214,7 +214,7 @@ describe('installPyPy', () => {
     spyChmodSync.mockImplementation(() => undefined);
 
     await expect(
-      installer.installPyPy('7.3.x', '3.6.12', 'x64')
+      installer.installPyPy('7.3.x', '3.6.12', architecture)
     ).resolves.toEqual({
       installDir: path.join(toolDir, 'PyPy', '3.6.12', architecture),
       resolvedPythonVersion: '3.6.12',
