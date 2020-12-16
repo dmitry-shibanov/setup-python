@@ -2353,11 +2353,6 @@ function getPyPyVersionFromPath(installDir) {
     return path.basename(path.dirname(installDir));
 }
 exports.getPyPyVersionFromPath = getPyPyVersionFromPath;
-function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
-    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
-    fs_1.default.writeFileSync(pypyFilePath, resolvedPyPyVersion);
-}
-exports.writeExactPyPyVersionFile = writeExactPyPyVersionFile;
 /**
  * In tool-cache, we put PyPy to '<toolcache_root>/PyPy/<python_version>/x64'
  * There is no easy way to determine what PyPy version is located in specific folder
@@ -2375,6 +2370,11 @@ function readExactPyPyVersionFile(installDir) {
     return pypyVersion;
 }
 exports.readExactPyPyVersionFile = readExactPyPyVersionFile;
+function writeExactPyPyVersionFile(installDir, resolvedPyPyVersion) {
+    const pypyFilePath = path.join(installDir, PYPY_VERSION_FILE);
+    fs_1.default.writeFileSync(pypyFilePath, resolvedPyPyVersion);
+}
+exports.writeExactPyPyVersionFile = writeExactPyPyVersionFile;
 
 
 /***/ }),

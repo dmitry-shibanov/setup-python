@@ -224,7 +224,6 @@ describe('installPyPy', () => {
     expect(spyHttpClient).toHaveBeenCalled();
     expect(spyDownloadTool).toHaveBeenCalled();
     expect(spyExistsSync).toHaveBeenCalled();
-    expect(spyChmodSync).toHaveBeenCalled();
     expect(spyCacheDir).toHaveBeenCalled();
     expect(spyExec).toHaveBeenCalled();
   });
