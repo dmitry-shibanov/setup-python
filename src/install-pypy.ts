@@ -4,7 +4,7 @@ import * as tc from '@actions/tool-cache';
 import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import * as exec from '@actions/exec';
-import * as fs from 'fs';
+import fs from 'fs';
 
 import {
   IS_WINDOWS,
