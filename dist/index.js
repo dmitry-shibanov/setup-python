@@ -6738,6 +6738,10 @@ function usePyPy(majorVersion, architecture) {
     core.exportVariable('pythonLocation', pythonLocation);
     core.addPath(installDir);
     core.addPath(_binDir);
+    if (IS_WINDOWS) {
+        const scriptDir = path.join(installDir, 'Scripts');
+        core.addPath(scriptDir);
+    }
     const impl = 'pypy' + majorVersion.toString();
     core.setOutput('python-version', impl);
     return { impl: impl, version: versionFromPath(installDir) };
