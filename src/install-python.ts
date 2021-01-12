@@ -4,6 +4,7 @@ import * as tc from '@actions/tool-cache';
 import * as exec from '@actions/exec';
 import {ExecOptions} from '@actions/exec/lib/interfaces';
 import {IS_WINDOWS, IS_LINUX} from './utils';
+import * as fs from 'fs';
 
 const TOKEN = core.getInput('token');
 const AUTH = !TOKEN || isGhes() ? undefined : `token ${TOKEN}`;
@@ -31,6 +32,24 @@ export async function findReleaseFromManifest(
 }
 
 async function installPython(workingDirectory: string) {
+  let replaceContent;
+  if (IS_WINDOWS) {
+    replaceContent =
+      'cmd.exe /c "$PythonExePath -m ensurepip && $PythonExePath -m pip install --upgrade pip';
+  } else {
+    replaceContent = './python -m pip install --ignore-installed pip';
+  }
+  const filePath = path.join(
+    workingDirectory,
+    IS_WINDOWS ? './setup.ps1' : './setup.sh'
+  );
+  let fileContent = fs.readFileSync(filePath).toString();
+  fileContent = fileContent.replace(
+    replaceContent,
+    `${replaceContent} --no-warn-script-location`
+  );
+  core.info(fileContent);
+  fs.writeFileSync(filePath, fileContent);
   const options: ExecOptions = {
     cwd: workingDirectory,
     env: {

@@ -6775,6 +6775,7 @@ const core = __importStar(__webpack_require__(470));
 const tc = __importStar(__webpack_require__(533));
 const exec = __importStar(__webpack_require__(986));
 const utils_1 = __webpack_require__(163);
+const fs = __importStar(__webpack_require__(747));
 const TOKEN = core.getInput('token');
 const AUTH = !TOKEN || isGhes() ? undefined : `token ${TOKEN}`;
 const MANIFEST_REPO_OWNER = 'actions';
@@ -6790,6 +6791,18 @@ function findReleaseFromManifest(semanticVersionSpec, architecture) {
 exports.findReleaseFromManifest = findReleaseFromManifest;
 function installPython(workingDirectory) {
     return __awaiter(this, void 0, void 0, function* () {
+        let replaceContent;
+        if (utils_1.IS_WINDOWS) {
+            replaceContent = 'cmd.exe /c "$PythonExePath -m ensurepip && $PythonExePath -m pip install --upgrade pip';
+        }
+        else {
+            replaceContent = './python -m pip install --ignore-installed pip';
+        }
+        const filePath = path.join(workingDirectory, utils_1.IS_WINDOWS ? './setup.ps1' : './setup.sh');
+        let fileContent = fs.readFileSync(filePath).toString();
+        fileContent = fileContent.replace(replaceContent, `${replaceContent} --no-warn-script-location`);
+        core.info(fileContent);
+        fs.writeFileSync(filePath, fileContent);
         const options = {
             cwd: workingDirectory,
             env: Object.assign(Object.assign({}, process.env), (utils_1.IS_LINUX && { LD_LIBRARY_PATH: path.join(workingDirectory, 'lib') })),
