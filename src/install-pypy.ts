@@ -149,6 +149,10 @@ export function findRelease(
           file.platform.replace(/\d+/g, '') ===
             process.platform.replace(/\d+/g, '')
       );
+    core.info(`isPyPyVersionSatisfied ${isPyPyVersionSatisfied}`);
+    core.info(`isPyPyNightly ${isPyPyNightly}`);
+    core.info(`isArchPresent ${isArchPresent}`);
+
     return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
   });
 
@@ -171,7 +175,9 @@ export function findRelease(
 
   const foundRelease = sortedReleases[0];
   const foundAsset = foundRelease.files.find(
-    item => item.arch === architecture && item.platform === process.platform
+    item =>
+      item.arch === architecture &&
+      item.platform.replace(/\d+/g, '') === process.platform.replace(/\d+/g, '')
   );
 
   return {

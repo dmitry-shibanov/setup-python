@@ -2896,6 +2896,9 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
             item.files.some(file => file.arch === architecture &&
                 file.platform.replace(/\d+/g, '') ===
                     process.platform.replace(/\d+/g, ''));
+        core.info(`isPyPyVersionSatisfied ${isPyPyVersionSatisfied}`);
+        core.info(`isPyPyNightly ${isPyPyNightly}`);
+        core.info(`isArchPresent ${isArchPresent}`);
         return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
     });
     if (filterReleases.length === 0) {
@@ -2906,7 +2909,8 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
             semver.compare(semver.coerce(current.python_version), semver.coerce(previous.python_version)));
     });
     const foundRelease = sortedReleases[0];
-    const foundAsset = foundRelease.files.find(item => item.arch === architecture && item.platform === process.platform);
+    const foundAsset = foundRelease.files.find(item => item.arch === architecture &&
+        item.platform.replace(/\d+/g, '') === process.platform.replace(/\d+/g, ''));
     return {
         foundAsset,
         resolvedPythonVersion: foundRelease.python_version,
