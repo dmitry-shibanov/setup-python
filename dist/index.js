@@ -2893,7 +2893,9 @@ function findRelease(releases, pythonVersion, pypyVersion, architecture) {
         const isPyPyVersionSatisfied = isPyPyNightly ||
             semver.satisfies(pypyVersionToSemantic(item.pypy_version), pypyVersion);
         const isArchPresent = item.files &&
-            item.files.some(file => file.arch === architecture && file.platform === process.platform);
+            item.files.some(file => file.arch === architecture &&
+                file.platform.replace(/\d+/g, '') ===
+                    process.platform.replace(/\d+/g, ''));
         return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
     });
     if (filterReleases.length === 0) {

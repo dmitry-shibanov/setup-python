@@ -144,7 +144,10 @@ export function findRelease(
     const isArchPresent =
       item.files &&
       item.files.some(
-        file => file.arch === architecture && file.platform === process.platform
+        file =>
+          file.arch === architecture &&
+          file.platform.replace(/\d+/g, '') ===
+            process.platform.replace(/\d+/g, '')
       );
     return isPythonVersionSatisfied && isPyPyVersionSatisfied && isArchPresent;
   });
