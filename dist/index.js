@@ -1129,9 +1129,12 @@ exports.findPyPyVersion = findPyPyVersion;
 function findPyPyToolCache(pythonVersion, pypyVersion, architecture) {
     let resolvedPyPyVersion = '';
     let resolvedPythonVersion = '';
+    core.info(`architecture is ${architecture}`);
     let installDir = utils_1.IS_WINDOWS
         ? findPyPyInstallDirForWindows(pythonVersion)
         : tc.find('PyPy', pythonVersion, architecture);
+    const allVersion = tc.findAllVersions('PyPy');
+    core.info(`allversion is ${allVersion}`);
     if (installDir) {
         // 'tc.find' finds tool based on Python version but we also need to check
         // whether PyPy version satisfies requested version.
@@ -1177,7 +1180,10 @@ function parsePyPyVersion(versionSpec) {
 exports.parsePyPyVersion = parsePyPyVersion;
 function findPyPyInstallDirForWindows(pythonVersion) {
     let installDir = '';
-    utils_1.WINDOWS_ARCHS.forEach(architecture => (installDir = installDir || tc.find('PyPy', pythonVersion, architecture)));
+    utils_1.WINDOWS_ARCHS.forEach(architecture => {
+        installDir = installDir || tc.find('PyPy', pythonVersion, architecture);
+        core.info(`installDir is ${installDir}`);
+    });
     return installDir;
 }
 exports.findPyPyInstallDirForWindows = findPyPyInstallDirForWindows;

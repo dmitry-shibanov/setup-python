@@ -63,9 +63,12 @@ export function findPyPyToolCache(
 ) {
   let resolvedPyPyVersion = '';
   let resolvedPythonVersion = '';
+  core.info(`architecture is ${architecture}`);
   let installDir: string | null = IS_WINDOWS
     ? findPyPyInstallDirForWindows(pythonVersion)
     : tc.find('PyPy', pythonVersion, architecture);
+  const allVersion = tc.findAllVersions('PyPy');
+  core.info(`allversion is ${allVersion}`);
 
   if (installDir) {
     // 'tc.find' finds tool based on Python version but we also need to check
@@ -131,10 +134,10 @@ export function parsePyPyVersion(versionSpec: string): IPyPyVersionSpec {
 export function findPyPyInstallDirForWindows(pythonVersion: string): string {
   let installDir = '';
 
-  WINDOWS_ARCHS.forEach(
-    architecture =>
-      (installDir = installDir || tc.find('PyPy', pythonVersion, architecture))
-  );
+  WINDOWS_ARCHS.forEach(architecture => {
+    installDir = installDir || tc.find('PyPy', pythonVersion, architecture);
+    core.info(`installDir is ${installDir}`);
+  });
 
   return installDir;
 }
